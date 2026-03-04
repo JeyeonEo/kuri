@@ -34,7 +34,7 @@ final class AppModel: ObservableObject {
     }
 
     static func bootstrap() -> AppModel {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.kuri.shared")!
             .appendingPathComponent("Kuri", isDirectory: true)
         let repository = try! StoreEnvironment.makeRepository(baseDirectory: base)
         let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://localhost:8787")!)
