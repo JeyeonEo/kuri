@@ -21,16 +21,19 @@ final class AppModel: ObservableObject {
     private let stateRepository: any AppStateRepository
     private let syncEngine: SyncEngine
     private let connectionClient: NotionConnectionClient
+    private let telemetry: TelemetryUploader
 
     init(
         repository: SQLiteCaptureRepository,
         syncEngine: SyncEngine,
-        connectionClient: NotionConnectionClient
+        connectionClient: NotionConnectionClient,
+        telemetry: TelemetryUploader
     ) {
         self.repository = repository
         self.stateRepository = repository
         self.syncEngine = syncEngine
         self.connectionClient = connectionClient
+        self.telemetry = telemetry
     }
 
     static func bootstrap() -> AppModel {
@@ -54,7 +57,11 @@ final class AppModel: ObservableObject {
                 return try? repository.string(for: .databaseID)
             }
         )
-        return AppModel(repository: repository, syncEngine: syncEngine, connectionClient: connectionClient)
+        let telemetry = TelemetryUploader(baseURL: connectionClient.baseURL) { [weak repository] in
+            guard let repository else { return nil }
+            return try? repository.string(for: .sessionToken)
+        }
+        return AppModel(repository: repository, syncEngine: syncEngine, connectionClient: connectionClient, telemetry: telemetry)
     }
 
     func loadState() {
@@ -154,6 +161,7 @@ final class AppModel: ObservableObject {
         lastSyncAt = .now
         reload()
         bannerMessage = failedItems.isEmpty ? "최근 항목이 Notion과 동기화됐어요." : "일부 항목은 잠시 후 다시 동기화돼요."
+        await telemetry.flush()
     }
 
     func disconnectNotion() {
