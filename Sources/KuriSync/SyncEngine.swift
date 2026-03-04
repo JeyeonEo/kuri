@@ -146,7 +146,7 @@ public struct URLSessionCaptureSyncClient: CaptureSyncClient {
         if let token = tokenProvider() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        request.timeoutInterval = 0.8
+        request.timeoutInterval = 15
         request.httpBody = try encoder.encode(CaptureSyncPayload(item: item, databaseId: databaseId))
 
         let (data, response) = try await session.data(for: request)
