@@ -46,7 +46,7 @@ final class AppModel: ObservableObject {
         let syncEngine = SyncEngine(
             repository: repository,
             client: client,
-            ocrProcessor: NoOpOCRProcessor(),
+            ocrProcessor: VisionOCRProcessor(),
             scheduler: scheduler,
             performanceMonitor: PerformanceMonitor(),
             databaseIdProvider: { [weak repository] in
@@ -191,12 +191,6 @@ final class AppModel: ObservableObject {
 
     private func persistConnectionState(_ status: ConnectionStatus) throws {
         try stateRepository.setString(status.rawValue, for: .connectionStatus)
-    }
-}
-
-private struct NoOpOCRProcessor: OCRProcessor {
-    func processImage(at path: String) async throws -> String {
-        ""
     }
 }
 
