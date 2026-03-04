@@ -32,7 +32,14 @@ struct ContentView: View {
             }
             .background(KuriSwiftUITheme.appBackground.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink(destination: SettingsView(model: model)) {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(KuriSwiftUITheme.inkPrimary)
+                    }
+                }
+            }
             .refreshable {
                 await model.triggerForegroundSync()
             }

@@ -156,6 +156,22 @@ final class AppModel: ObservableObject {
         bannerMessage = failedItems.isEmpty ? "최근 항목이 Notion과 동기화됐어요." : "일부 항목은 잠시 후 다시 동기화돼요."
     }
 
+    func disconnectNotion() {
+        try? stateRepository.setString(nil, for: .sessionToken)
+        try? stateRepository.setString(nil, for: .databaseID)
+        try? stateRepository.setString(nil, for: .workspaceName)
+        try? stateRepository.setString(ConnectionStatus.disconnected.rawValue, for: .connectionStatus)
+        connectionState = .disconnected
+        workspaceName = nil
+        databaseID = nil
+        bannerMessage = "Notion 연결이 해제됐어요."
+    }
+
+    func deleteItem(_ item: CaptureItem) {
+        try? repository.delete(id: item.id)
+        reload()
+    }
+
     private func userFacingConnectionError(from error: Error) -> String {
         let message = error.localizedDescription.lowercased()
         if message.contains("401") || message.contains("unauthorized") {
