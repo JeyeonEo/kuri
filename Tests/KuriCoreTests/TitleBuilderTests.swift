@@ -13,6 +13,17 @@ import Foundation
     #expect(title == "Great thread")
 }
 
+@Test func titleUsesOCRTextWhenSharedTextIsNil() {
+    let title = TitleBuilder.makeTitle(
+        sharedText: nil,
+        ocrText: "OCR 첫 번째 줄\n두 번째 줄",
+        sourceURL: URL(string: "https://threads.net/abc"),
+        date: Date(timeIntervalSince1970: 0)
+    )
+
+    #expect(title == "OCR 첫 번째 줄")
+}
+
 @Test func titleFallsBackToURLAndDate() {
     let title = TitleBuilder.makeTitle(
         sharedText: "   ",
