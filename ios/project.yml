@@ -27,6 +27,10 @@ targets:
         product: KuriObservability
     info:
       properties:
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - kuri
+            CFBundleURLName: com.kuri.app
         BGTaskSchedulerPermittedIdentifiers:
           - com.kuri.app.sync
     settings:
