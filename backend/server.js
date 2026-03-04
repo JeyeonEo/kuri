@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { NotionClient } from "./notion.js";
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultDataDir = path.join(__dirname, "data");
@@ -49,6 +50,18 @@ function bearerToken(req) {
     return null;
   }
   return header.slice("Bearer ".length);
+}
+
+function validSession(state, token) {
+  if (!token) return null;
+  const session = state.sessions[token];
+  if (!session) return null;
+  const age = Date.now() - new Date(session.createdAt).getTime();
+  if (age > SESSION_TTL_MS) {
+    delete state.sessions[token];
+    return null;
+  }
+  return session;
 }
 
 export function createHandler(options = {}) {
@@ -141,7 +154,7 @@ export function createHandler(options = {}) {
       const body = await readJSON(req);
       const workspaceId = body.installationId || "default-installation";
       const token = bearerToken(req);
-      const session = token ? state.sessions[token] : null;
+      const session = validSession(state, token);
       if (!session || session.installationId !== workspaceId) {
         return json(res, 401, { error: "unauthorized" });
       }
@@ -166,7 +179,7 @@ export function createHandler(options = {}) {
     if (req.method === "POST" && url.pathname === "/v1/captures/sync") {
       const body = await readJSON(req);
       const token = bearerToken(req);
-      const session = token ? state.sessions[token] : null;
+      const session = validSession(state, token);
       const workspace = session ? state.workspaces[session.installationId] : null;
       if (!session || !workspace || workspace.databaseId !== body.databaseId) {
         return json(res, 401, { error: "unauthorized" });
