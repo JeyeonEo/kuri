@@ -173,15 +173,40 @@ test("sync rejects requests without a valid session", async () => {
 });
 
 test("telemetry accepts samples and returns count", async () => {
-  const response = await callHandler("POST", "/v1/telemetry/client-performance", {
-    samples: [
-      { metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() },
-      { metric: "ocr_processing", durationMs: 340, timestamp: new Date().toISOString() }
-    ]
-  });
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+  const callback = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+  const callbackURL = new URL(callback.headers.Location);
+  const sessionToken = callbackURL.searchParams.get("sessionToken");
+
+  const response = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/telemetry/client-performance",
+    {
+      samples: [
+        { metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() },
+        { metric: "ocr_processing", durationMs: 340, timestamp: new Date().toISOString() }
+      ]
+    },
+    { authorization: `Bearer ${sessionToken}` },
+    stateFile
+  );
 
   assert.equal(response.statusCode, 202);
   assert.equal(response.body.accepted, 2);
+});
+
+test("telemetry rejects requests without a valid session", async () => {
+  const response = await callHandler("POST", "/v1/telemetry/client-performance", {
+    samples: [{ metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() }]
+  });
+  assert.equal(response.statusCode, 401);
 });
 
 test("unknown route returns 404", async () => {
@@ -326,7 +351,7 @@ test("rejects request body exceeding 1MB", async () => {
   const largeBody = Buffer.alloc(1024 * 1024 + 1, "x");
   const req = Readable.from(largeBody);
   req.method = "POST";
-  req.url = "/v1/telemetry/client-performance";
+  req.url = "/v1/oauth/notion/start";
   req.headers = { "content-type": "application/json" };
 
   let raw = "";

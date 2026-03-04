@@ -223,6 +223,11 @@ export function createHandler(options = {}) {
     }
 
     if (req.method === "POST" && url.pathname === "/v1/telemetry/client-performance") {
+      const token = bearerToken(req);
+      const session = validSession(state, token);
+      if (!session) {
+        return json(res, 401, { error: "unauthorized" });
+      }
       const body = await readJSON(req);
       return json(res, 202, {
         accepted: Array.isArray(body.samples) ? body.samples.length : 0
