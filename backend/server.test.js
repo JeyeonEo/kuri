@@ -171,6 +171,25 @@ test("sync rejects requests without a valid session", async () => {
   assert.equal(response.body.error, "unauthorized");
 });
 
+test("telemetry accepts samples and returns count", async () => {
+  const response = await callHandler("POST", "/v1/telemetry/client-performance", {
+    samples: [
+      { metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() },
+      { metric: "ocr_processing", durationMs: 340, timestamp: new Date().toISOString() }
+    ]
+  });
+
+  assert.equal(response.statusCode, 202);
+  assert.equal(response.body.accepted, 2);
+});
+
+test("unknown route returns 404", async () => {
+  const response = await callHandler("GET", "/v1/nonexistent", null);
+
+  assert.equal(response.statusCode, 404);
+  assert.equal(response.body.error, "not_found");
+});
+
 async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile()) {
   return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile);
 }
