@@ -215,6 +215,65 @@ test("NotionClient.buildPageBody builds correct request body", async () => {
   assert.equal(body.properties.Text.rich_text[0].text.content, "Shared text content");
 });
 
+test("full flow: oauth -> bootstrap -> sync -> duplicate returns same pageId", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+
+  // OAuth start
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  assert.equal(start.statusCode, 200);
+
+  // OAuth callback
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+  const callback = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+  const callbackURL = new URL(callback.headers.Location);
+  const sessionToken = callbackURL.searchParams.get("sessionToken");
+  assert.ok(sessionToken);
+
+  // Bootstrap
+  const bootstrap = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/workspaces/bootstrap", { installationId },
+    { authorization: `Bearer ${sessionToken}` }, stateFile
+  );
+  assert.equal(bootstrap.statusCode, 200);
+  const databaseId = bootstrap.body.databaseId;
+  assert.ok(databaseId);
+
+  // Sync
+  const clientItemId = crypto.randomUUID();
+  const headers = { authorization: `Bearer ${sessionToken}` };
+  const payload = {
+    clientItemId,
+    databaseId,
+    title: "E2E test",
+    sourceURL: "https://threads.net/e2e",
+    platform: "Threads",
+    tags: ["e2e"],
+    memo: "end to end",
+    text: "full flow",
+    status: "Synced",
+    capturedAt: new Date().toISOString()
+  };
+
+  const sync1 = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/captures/sync", payload, headers, stateFile
+  );
+  assert.equal(sync1.statusCode, 200);
+  assert.equal(sync1.body.result, "created");
+
+  // Duplicate sync
+  const sync2 = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/captures/sync", payload, headers, stateFile
+  );
+  assert.equal(sync2.body.result, "duplicate");
+  assert.equal(sync2.body.notionPageId, sync1.body.notionPageId);
+});
+
 async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile()) {
   return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile);
 }
