@@ -167,6 +167,39 @@ private struct TestOCR: OCRProcessor {
     }
 }
 
+#if canImport(Vision) && canImport(CoreGraphics)
+import CoreGraphics
+import ImageIO
+
+@Test func visionOCRProcessorConformsToProtocol() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+    // Create a 100x100 white PNG (Vision requires > 2px per dimension)
+    let size = 100
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let context = CGContext(
+        data: nil, width: size, height: size,
+        bitsPerComponent: 8, bytesPerRow: size * 4,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )!
+    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+    let cgImage = context.makeImage()!
+
+    let imageURL = root.appendingPathComponent("test.png")
+    let dest = CGImageDestinationCreateWithURL(imageURL as CFURL, "public.png" as CFString, 1, nil)!
+    CGImageDestinationAddImage(dest, cgImage, nil)
+    CGImageDestinationFinalize(dest)
+
+    let processor = VisionOCRProcessor()
+    let result = try await processor.processImage(at: imageURL.path)
+    // A blank white image has no text; result should be empty
+    #expect(result.isEmpty)
+}
+#endif
+
 private final class TestScheduler: @unchecked Sendable, SyncScheduler {
     var scheduled: [(UUID, Date)] = []
 
