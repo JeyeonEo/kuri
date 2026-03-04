@@ -12,7 +12,7 @@ const stateLocks = new Map();
 
 function withStateLock(stateFile, fn) {
   const pending = stateLocks.get(stateFile) || Promise.resolve();
-  const next = pending.then(fn, fn);
+  const next = pending.then(fn, () => fn());
   stateLocks.set(stateFile, next);
   return next;
 }
@@ -54,7 +54,7 @@ function redirect(res, location) {
 }
 
 function bearerToken(req) {
-  const header = req.headers.authorization || req.headers.Authorization;
+  const header = req.headers.authorization;
   if (!header || !header.startsWith("Bearer ")) {
     return null;
   }
@@ -166,6 +166,7 @@ export function createHandler(options = {}) {
       const token = bearerToken(req);
       const session = validSession(state, token);
       if (!session || session.installationId !== workspaceId) {
+        saveState(stateFile, state);
         return json(res, 401, { error: "unauthorized" });
       }
       if (!state.workspaces[workspaceId]) {
@@ -183,7 +184,8 @@ export function createHandler(options = {}) {
         ws.realDatabaseCreated = true;
       }
       saveState(stateFile, state);
-      return json(res, 200, ws);
+      const { notionAccessToken: _, ...publicWs } = ws;
+      return json(res, 200, publicWs);
     }
 
     if (req.method === "POST" && url.pathname === "/v1/captures/sync") {
@@ -192,9 +194,13 @@ export function createHandler(options = {}) {
       const session = validSession(state, token);
       const workspace = session ? state.workspaces[session.installationId] : null;
       if (!session || !workspace || workspace.databaseId !== body.databaseId) {
+        saveState(stateFile, state);
         return json(res, 401, { error: "unauthorized" });
       }
       const key = body.clientItemId;
+      if (typeof key !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+        return json(res, 400, { error: "invalid_client_item_id" });
+      }
       if (state.captures[key]) {
         return json(res, 200, {
           result: "duplicate",
