@@ -1,0 +1,52 @@
+name: Kuri
+options:
+  bundleIdPrefix: com.kuri
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+packages:
+  Kuri:
+    path: ..
+targets:
+  KuriApp:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - KuriApp
+      - SharedUI
+    dependencies:
+      - package: Kuri
+        product: KuriCore
+      - package: Kuri
+        product: KuriStore
+      - package: Kuri
+        product: KuriSync
+      - package: Kuri
+        product: KuriObservability
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kuri.app
+        INFOPLIST_FILE: KuriApp/Info.plist
+        CODE_SIGN_STYLE: Automatic
+  KuriShareExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - KuriShareExtension
+      - SharedUI
+    dependencies:
+      - target: KuriApp
+      - package: Kuri
+        product: KuriCore
+      - package: Kuri
+        product: KuriStore
+      - package: Kuri
+        product: KuriObservability
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kuri.shareextension
+        INFOPLIST_FILE: KuriShareExtension/Info.plist
+        CODE_SIGN_STYLE: Automatic

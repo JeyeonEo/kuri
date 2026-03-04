@@ -1,0 +1,530 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		004CFA57F22A64BC8F017A7B /* KuriTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF7FD2BEA3CA53E1E8B472 /* KuriTheme.swift */; };
+		14C652CDB4A253AD41674154 /* KuriCore in Frameworks */ = {isa = PBXBuildFile; productRef = 86A325BA26CEDE4D667EFC8E /* KuriCore */; };
+		203A4FB866F8D0E00BBE99DA /* KuriUIKitComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */; };
+		2920ED961416BD9723C37685 /* KuriStore in Frameworks */ = {isa = PBXBuildFile; productRef = 5A53BD21772AD10EC1C0B12F /* KuriStore */; };
+		345913301EAC8DBEA5923338 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C860CA52C0DE4B79C18D99D1 /* AppModel.swift */; };
+		35545CD4291848B17AE8AECF /* KuriStore in Frameworks */ = {isa = PBXBuildFile; productRef = 3F710C6A72441F4E6E4E028A /* KuriStore */; };
+		387CA3FC30EE9AEC1EA81EA1 /* KuriObservability in Frameworks */ = {isa = PBXBuildFile; productRef = 7DA4C8FBD517526D1FFF36FF /* KuriObservability */; };
+		4205B7516FEE238ACCEEE885 /* KuriTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABDB5259C0DAE6056E6493A /* KuriTypography.swift */; };
+		508EF3BB234F7101DF46731A /* KuriSync in Frameworks */ = {isa = PBXBuildFile; productRef = F52552C64CD5EA59F3DAC0CD /* KuriSync */; };
+		6D142598CB6EC93B7CD06BAD /* NotionConnectionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 094118F8148D405764FADEA1 /* NotionConnectionClient.swift */; };
+		7AF7F4F9365B4005D24D5888 /* KuriTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF7FD2BEA3CA53E1E8B472 /* KuriTheme.swift */; };
+		7E8FD59179D4CC0035571E07 /* KuriApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329DBAA9A9F334828422431F /* KuriApp.swift */; };
+		9B957DB9E9D9B267F806F228 /* KuriTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABDB5259C0DAE6056E6493A /* KuriTypography.swift */; };
+		B0D876F8D6F847747D9290BB /* KuriSwiftUITheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */; };
+		CE71D9F4E3FB907B5619BCCC /* KuriObservability in Frameworks */ = {isa = PBXBuildFile; productRef = B6387E8FA7C0D1E4A9B1273A /* KuriObservability */; };
+		F5B206CB2A0FA372A4F98E3A /* KuriSwiftUITheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */; };
+		FAAE0BBCB854279257AE7E80 /* KuriUIKitComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */; };
+		FC6860D410A4643B272E62FC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9F97992A10849C2BEE315FE /* ContentView.swift */; };
+		FCDBA5915A505DB10A8AEEC7 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB1D002E84283D695AF0C1B /* ShareViewController.swift */; };
+		FF10A4FBE023BE8F73C60EC4 /* KuriCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1AF4529953B5FC3E4984CA15 /* KuriCore */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0B4FCD770BA8DE7F84F1C63F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B848593300ABE32D8F4E5834 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1948C324479F75EA78B75CB;
+			remoteInfo = KuriApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		094118F8148D405764FADEA1 /* NotionConnectionClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotionConnectionClient.swift; sourceTree = "<group>"; };
+		0BB1D002E84283D695AF0C1B /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		0EAF7FD2BEA3CA53E1E8B472 /* KuriTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriTheme.swift; sourceTree = "<group>"; };
+		1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriSwiftUITheme.swift; sourceTree = "<group>"; };
+		1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriUIKitComponents.swift; sourceTree = "<group>"; };
+		2A3C7D33321EF2047A0F053A /* KuriApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KuriApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		329DBAA9A9F334828422431F /* KuriApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriApp.swift; sourceTree = "<group>"; };
+		79A74B74C1C1DB2E07928547 /* KuriShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = KuriShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		907F972BA7648C49D21AEA5C /* kuri */ = {isa = PBXFileReference; lastKnownFileType = folder; name = kuri; path = ..; sourceTree = SOURCE_ROOT; };
+		C860CA52C0DE4B79C18D99D1 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		C9F97992A10849C2BEE315FE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		DB44437B5D7B2882A9570873 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		EABDB5259C0DAE6056E6493A /* KuriTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriTypography.swift; sourceTree = "<group>"; };
+		F2985B5F6CD702B214D75633 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1F493DFADC65F61D43385046 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FF10A4FBE023BE8F73C60EC4 /* KuriCore in Frameworks */,
+				2920ED961416BD9723C37685 /* KuriStore in Frameworks */,
+				CE71D9F4E3FB907B5619BCCC /* KuriObservability in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		234E43BE2BA8870F83F9D9C3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14C652CDB4A253AD41674154 /* KuriCore in Frameworks */,
+				35545CD4291848B17AE8AECF /* KuriStore in Frameworks */,
+				508EF3BB234F7101DF46731A /* KuriSync in Frameworks */,
+				387CA3FC30EE9AEC1EA81EA1 /* KuriObservability in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		008EBC6AA68A8158649E5AB2 /* SharedUI */ = {
+			isa = PBXGroup;
+			children = (
+				1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */,
+				0EAF7FD2BEA3CA53E1E8B472 /* KuriTheme.swift */,
+				EABDB5259C0DAE6056E6493A /* KuriTypography.swift */,
+				1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */,
+			);
+			path = SharedUI;
+			sourceTree = "<group>";
+		};
+		2C2F1FF7FBA63DC81BB0FAEF = {
+			isa = PBXGroup;
+			children = (
+				B21BFB8319328255B4D5E6CE /* KuriApp */,
+				CE99E8EC9ECDDCA43E626CFE /* KuriShareExtension */,
+				F0EFC6143D5728A98E62A8AC /* Packages */,
+				008EBC6AA68A8158649E5AB2 /* SharedUI */,
+				9BDF9FBFE2EBB2FD93D910B8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9BDF9FBFE2EBB2FD93D910B8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2A3C7D33321EF2047A0F053A /* KuriApp.app */,
+				79A74B74C1C1DB2E07928547 /* KuriShareExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B21BFB8319328255B4D5E6CE /* KuriApp */ = {
+			isa = PBXGroup;
+			children = (
+				C860CA52C0DE4B79C18D99D1 /* AppModel.swift */,
+				C9F97992A10849C2BEE315FE /* ContentView.swift */,
+				F2985B5F6CD702B214D75633 /* Info.plist */,
+				329DBAA9A9F334828422431F /* KuriApp.swift */,
+				094118F8148D405764FADEA1 /* NotionConnectionClient.swift */,
+			);
+			path = KuriApp;
+			sourceTree = "<group>";
+		};
+		CE99E8EC9ECDDCA43E626CFE /* KuriShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				DB44437B5D7B2882A9570873 /* Info.plist */,
+				0BB1D002E84283D695AF0C1B /* ShareViewController.swift */,
+			);
+			path = KuriShareExtension;
+			sourceTree = "<group>";
+		};
+		F0EFC6143D5728A98E62A8AC /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				907F972BA7648C49D21AEA5C /* kuri */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4F5859572FB0CE43160765D5 /* KuriShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3E1B4134589F92D32C073139 /* Build configuration list for PBXNativeTarget "KuriShareExtension" */;
+			buildPhases = (
+				8AACF991243715DD2FFB5BFE /* Sources */,
+				1F493DFADC65F61D43385046 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AD8345B3546F52185E25139E /* PBXTargetDependency */,
+			);
+			name = KuriShareExtension;
+			packageProductDependencies = (
+				1AF4529953B5FC3E4984CA15 /* KuriCore */,
+				5A53BD21772AD10EC1C0B12F /* KuriStore */,
+				B6387E8FA7C0D1E4A9B1273A /* KuriObservability */,
+			);
+			productName = KuriShareExtension;
+			productReference = 79A74B74C1C1DB2E07928547 /* KuriShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		A1948C324479F75EA78B75CB /* KuriApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 18FFC7D253510FF2B7E753A2 /* Build configuration list for PBXNativeTarget "KuriApp" */;
+			buildPhases = (
+				A9259DB038CBEA4B15530F31 /* Sources */,
+				234E43BE2BA8870F83F9D9C3 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = KuriApp;
+			packageProductDependencies = (
+				86A325BA26CEDE4D667EFC8E /* KuriCore */,
+				3F710C6A72441F4E6E4E028A /* KuriStore */,
+				F52552C64CD5EA59F3DAC0CD /* KuriSync */,
+				7DA4C8FBD517526D1FFF36FF /* KuriObservability */,
+			);
+			productName = KuriApp;
+			productReference = 2A3C7D33321EF2047A0F053A /* KuriApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B848593300ABE32D8F4E5834 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					4F5859572FB0CE43160765D5 = {
+						ProvisioningStyle = Automatic;
+					};
+					A1948C324479F75EA78B75CB = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = EAC1E6DBB0041372788B2098 /* Build configuration list for PBXProject "Kuri" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 2C2F1FF7FBA63DC81BB0FAEF;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				72AE521BA0C5744F808B2895 /* XCLocalSwiftPackageReference ".." */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1948C324479F75EA78B75CB /* KuriApp */,
+				4F5859572FB0CE43160765D5 /* KuriShareExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8AACF991243715DD2FFB5BFE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F5B206CB2A0FA372A4F98E3A /* KuriSwiftUITheme.swift in Sources */,
+				7AF7F4F9365B4005D24D5888 /* KuriTheme.swift in Sources */,
+				9B957DB9E9D9B267F806F228 /* KuriTypography.swift in Sources */,
+				FAAE0BBCB854279257AE7E80 /* KuriUIKitComponents.swift in Sources */,
+				FCDBA5915A505DB10A8AEEC7 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A9259DB038CBEA4B15530F31 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				345913301EAC8DBEA5923338 /* AppModel.swift in Sources */,
+				FC6860D410A4643B272E62FC /* ContentView.swift in Sources */,
+				7E8FD59179D4CC0035571E07 /* KuriApp.swift in Sources */,
+				B0D876F8D6F847747D9290BB /* KuriSwiftUITheme.swift in Sources */,
+				004CFA57F22A64BC8F017A7B /* KuriTheme.swift in Sources */,
+				4205B7516FEE238ACCEEE885 /* KuriTypography.swift in Sources */,
+				203A4FB866F8D0E00BBE99DA /* KuriUIKitComponents.swift in Sources */,
+				6D142598CB6EC93B7CD06BAD /* NotionConnectionClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AD8345B3546F52185E25139E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1948C324479F75EA78B75CB /* KuriApp */;
+			targetProxy = 0B4FCD770BA8DE7F84F1C63F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		23B74C9E0B4169E41A3DF427 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = KuriShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.shareextension;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		34F81201BC98609C45FFCCD2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = KuriApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		93A5EE5F83446DFB1B375D35 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		C8F5E35F269CB65221C17D92 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		D526F19665129C642846E6F0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = KuriShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.shareextension;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		ECDC7D41802E50BF1E106965 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = KuriApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		18FFC7D253510FF2B7E753A2 /* Build configuration list for PBXNativeTarget "KuriApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				34F81201BC98609C45FFCCD2 /* Debug */,
+				ECDC7D41802E50BF1E106965 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3E1B4134589F92D32C073139 /* Build configuration list for PBXNativeTarget "KuriShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23B74C9E0B4169E41A3DF427 /* Debug */,
+				D526F19665129C642846E6F0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		EAC1E6DBB0041372788B2098 /* Build configuration list for PBXProject "Kuri" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C8F5E35F269CB65221C17D92 /* Debug */,
+				93A5EE5F83446DFB1B375D35 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		72AE521BA0C5744F808B2895 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1AF4529953B5FC3E4984CA15 /* KuriCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriCore;
+		};
+		3F710C6A72441F4E6E4E028A /* KuriStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriStore;
+		};
+		5A53BD21772AD10EC1C0B12F /* KuriStore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriStore;
+		};
+		7DA4C8FBD517526D1FFF36FF /* KuriObservability */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriObservability;
+		};
+		86A325BA26CEDE4D667EFC8E /* KuriCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriCore;
+		};
+		B6387E8FA7C0D1E4A9B1273A /* KuriObservability */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriObservability;
+		};
+		F52552C64CD5EA59F3DAC0CD /* KuriSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KuriSync;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = B848593300ABE32D8F4E5834 /* Project object */;
+}
