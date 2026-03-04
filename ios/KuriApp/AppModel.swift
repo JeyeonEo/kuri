@@ -37,7 +37,7 @@ final class AppModel: ObservableObject {
     }
 
     static func bootstrap() -> AppModel {
-        let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.kuri.shared")!
+        let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared")!
             .appendingPathComponent("Kuri", isDirectory: true)
         let repository = try! StoreEnvironment.makeRepository(baseDirectory: base)
         let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://localhost:8787")!)
@@ -221,7 +221,7 @@ final class AppModel: ObservableObject {
 import BackgroundTasks
 
 final class AppSyncScheduler: SyncScheduler {
-    static let syncTaskIdentifier = "com.kuri.app.sync"
+    static let syncTaskIdentifier = "com.yona.kuri.app.sync"
 
     func triggerForegroundSync() {
         // Foreground sync is handled directly by AppModel.triggerForegroundSync()

@@ -17,10 +17,12 @@
 		4205B7516FEE238ACCEEE885 /* KuriTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABDB5259C0DAE6056E6493A /* KuriTypography.swift */; };
 		508EF3BB234F7101DF46731A /* KuriSync in Frameworks */ = {isa = PBXBuildFile; productRef = F52552C64CD5EA59F3DAC0CD /* KuriSync */; };
 		6D142598CB6EC93B7CD06BAD /* NotionConnectionClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 094118F8148D405764FADEA1 /* NotionConnectionClient.swift */; };
+		77EAFD3DA1660C57ED03C4A1 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56EC396E5C72FABFA742E11C /* SettingsView.swift */; };
 		7AF7F4F9365B4005D24D5888 /* KuriTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF7FD2BEA3CA53E1E8B472 /* KuriTheme.swift */; };
 		7E8FD59179D4CC0035571E07 /* KuriApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 329DBAA9A9F334828422431F /* KuriApp.swift */; };
 		9B957DB9E9D9B267F806F228 /* KuriTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = EABDB5259C0DAE6056E6493A /* KuriTypography.swift */; };
 		B0D876F8D6F847747D9290BB /* KuriSwiftUITheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */; };
+		B99F07FF603B2D112D216C8D /* TelemetryUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28ECB709E2348158BB19842D /* TelemetryUploader.swift */; };
 		CE71D9F4E3FB907B5619BCCC /* KuriObservability in Frameworks */ = {isa = PBXBuildFile; productRef = B6387E8FA7C0D1E4A9B1273A /* KuriObservability */; };
 		F5B206CB2A0FA372A4F98E3A /* KuriSwiftUITheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */; };
 		FAAE0BBCB854279257AE7E80 /* KuriUIKitComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */; };
@@ -45,10 +47,14 @@
 		0EAF7FD2BEA3CA53E1E8B472 /* KuriTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriTheme.swift; sourceTree = "<group>"; };
 		1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriSwiftUITheme.swift; sourceTree = "<group>"; };
 		1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriUIKitComponents.swift; sourceTree = "<group>"; };
+		28ECB709E2348158BB19842D /* TelemetryUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryUploader.swift; sourceTree = "<group>"; };
 		2A3C7D33321EF2047A0F053A /* KuriApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KuriApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		329DBAA9A9F334828422431F /* KuriApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriApp.swift; sourceTree = "<group>"; };
+		3DA32AB6A807ED7E1ADE7B0A /* KuriApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KuriApp.entitlements; sourceTree = "<group>"; };
+		56EC396E5C72FABFA742E11C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		79A74B74C1C1DB2E07928547 /* KuriShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = KuriShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		907F972BA7648C49D21AEA5C /* kuri */ = {isa = PBXFileReference; lastKnownFileType = folder; name = kuri; path = ..; sourceTree = SOURCE_ROOT; };
+		C70F5BD4C0F20494FADD316F /* KuriShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KuriShareExtension.entitlements; sourceTree = "<group>"; };
 		C860CA52C0DE4B79C18D99D1 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		C9F97992A10849C2BEE315FE /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		DB44437B5D7B2882A9570873 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -118,8 +124,11 @@
 				C860CA52C0DE4B79C18D99D1 /* AppModel.swift */,
 				C9F97992A10849C2BEE315FE /* ContentView.swift */,
 				F2985B5F6CD702B214D75633 /* Info.plist */,
+				3DA32AB6A807ED7E1ADE7B0A /* KuriApp.entitlements */,
 				329DBAA9A9F334828422431F /* KuriApp.swift */,
 				094118F8148D405764FADEA1 /* NotionConnectionClient.swift */,
+				56EC396E5C72FABFA742E11C /* SettingsView.swift */,
+				28ECB709E2348158BB19842D /* TelemetryUploader.swift */,
 			);
 			path = KuriApp;
 			sourceTree = "<group>";
@@ -128,6 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				DB44437B5D7B2882A9570873 /* Info.plist */,
+				C70F5BD4C0F20494FADD316F /* KuriShareExtension.entitlements */,
 				0BB1D002E84283D695AF0C1B /* ShareViewController.swift */,
 			);
 			path = KuriShareExtension;
@@ -253,6 +263,8 @@
 				4205B7516FEE238ACCEEE885 /* KuriTypography.swift in Sources */,
 				203A4FB866F8D0E00BBE99DA /* KuriUIKitComponents.swift in Sources */,
 				6D142598CB6EC93B7CD06BAD /* NotionConnectionClient.swift in Sources */,
+				77EAFD3DA1660C57ED03C4A1 /* SettingsView.swift in Sources */,
+				B99F07FF603B2D112D216C8D /* TelemetryUploader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,6 +282,7 @@
 		23B74C9E0B4169E41A3DF427 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = KuriShareExtension/KuriShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = KuriShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -278,7 +291,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.shareextension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yona.kuri.shareextension;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -288,6 +301,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = KuriApp/KuriApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = KuriApp/Info.plist;
@@ -296,7 +310,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yona.kuri.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -424,6 +438,7 @@
 		D526F19665129C642846E6F0 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = KuriShareExtension/KuriShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = KuriShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
@@ -432,7 +447,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.shareextension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yona.kuri.shareextension;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -442,6 +457,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = KuriApp/KuriApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = KuriApp/Info.plist;
@@ -450,7 +466,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.kuri.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yona.kuri.app;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

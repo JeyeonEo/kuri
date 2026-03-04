@@ -29,6 +29,10 @@
             </array>
         </dict>
     </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.yona.kuri.app.sync</string>
+    </array>
     <key>LSRequiresIPhoneOS</key>
     <true/>
 </dict>

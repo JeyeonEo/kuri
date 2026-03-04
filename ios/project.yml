@@ -1,6 +1,6 @@
 name: Kuri
 options:
-  bundleIdPrefix: com.kuri
+  bundleIdPrefix: com.yona.kuri
 settings:
   base:
     SWIFT_VERSION: 6.0
@@ -14,8 +14,8 @@ targets:
     platform: iOS
     deploymentTarget: "17.0"
     sources:
-      - KuriApp
-      - SharedUI
+      - path: KuriApp
+      - path: SharedUI
     dependencies:
       - package: Kuri
         product: KuriCore
@@ -25,17 +25,9 @@ targets:
         product: KuriSync
       - package: Kuri
         product: KuriObservability
-    info:
-      properties:
-        CFBundleURLTypes:
-          - CFBundleURLSchemes:
-              - kuri
-            CFBundleURLName: com.kuri.app
-        BGTaskSchedulerPermittedIdentifiers:
-          - com.kuri.app.sync
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kuri.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.yona.kuri.app
         CODE_SIGN_ENTITLEMENTS: KuriApp/KuriApp.entitlements
         CODE_SIGN_STYLE: Automatic
   KuriShareExtension:
@@ -55,7 +47,7 @@ targets:
         product: KuriObservability
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.kuri.shareextension
+        PRODUCT_BUNDLE_IDENTIFIER: com.yona.kuri.shareextension
         INFOPLIST_FILE: KuriShareExtension/Info.plist
         CODE_SIGN_ENTITLEMENTS: KuriShareExtension/KuriShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
