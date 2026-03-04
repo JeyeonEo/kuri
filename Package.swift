@@ -40,6 +40,10 @@ let package = Package(
         .testTarget(
             name: "KuriSyncTests",
             dependencies: ["KuriSync", "KuriStore"]
+        ),
+        .testTarget(
+            name: "KuriObservabilityTests",
+            dependencies: ["KuriObservability"]
         )
     ]
 )
