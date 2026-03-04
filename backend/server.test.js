@@ -274,6 +274,26 @@ test("full flow: oauth -> bootstrap -> sync -> duplicate returns same pageId", a
   assert.equal(sync2.body.notionPageId, sync1.body.notionPageId);
 });
 
+test("oauth callback rejects expired state (TTL exceeded)", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  state.oauthStarts[oauthState].createdAt = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+  fs.writeFileSync(stateFile, JSON.stringify(state), "utf8");
+
+  const response = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+  assert.equal(response.statusCode, 302);
+  assert.ok(response.headers.Location.includes("reason=expired_state"));
+});
+
 test("rejects request body exceeding 1MB", async () => {
   const stateFile = makeStateFile();
   const largeBody = Buffer.alloc(1024 * 1024 + 1, "x");

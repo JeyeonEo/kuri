@@ -5,6 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NotionClient } from "./notion.js";
 
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultDataDir = path.join(__dirname, "data");
 const defaultStateFile = path.join(defaultDataDir, "state.json");
@@ -84,6 +86,12 @@ export function createHandler(options = {}) {
       const start = state.oauthStarts[oauthState];
       if (!start?.installationId) {
         return redirect(res, "kuri://oauth/notion?status=failed&reason=invalid_state");
+      }
+      const stateAge = Date.now() - new Date(start.createdAt).getTime();
+      if (stateAge > OAUTH_STATE_TTL_MS) {
+        delete state.oauthStarts[oauthState];
+        saveState(stateFile, state);
+        return redirect(res, "kuri://oauth/notion?status=failed&reason=expired_state");
       }
       const installationId = start.installationId;
       delete state.oauthStarts[oauthState];
