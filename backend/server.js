@@ -8,6 +8,15 @@ import { NotionClient } from "./notion.js";
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+const stateLocks = new Map();
+
+function withStateLock(stateFile, fn) {
+  const pending = stateLocks.get(stateFile) || Promise.resolve();
+  const next = pending.then(fn, fn);
+  stateLocks.set(stateFile, next);
+  return next;
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultDataDir = path.join(__dirname, "data");
 const defaultStateFile = path.join(defaultDataDir, "state.json");
@@ -67,6 +76,7 @@ function validSession(state, token) {
 export function createHandler(options = {}) {
   const stateFile = options.stateFile ?? defaultStateFile;
   return async function handler(req, res) {
+    return withStateLock(stateFile, async () => {
     const url = new URL(req.url, "http://localhost");
     const state = ensureState(stateFile);
 
@@ -241,6 +251,7 @@ export function createHandler(options = {}) {
       }
       return json(res, 500, { error: "internal" });
     }
+    });
   };
 }
 
