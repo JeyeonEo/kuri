@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NotionClient } from "./notion.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultDataDir = path.join(__dirname, "data");
@@ -136,7 +137,21 @@ export function createHandler(options = {}) {
         });
       }
 
-      const notionPageId = `page_${crypto.randomUUID()}`;
+      let notionPageId;
+      if (process.env.NOTION_MODE === "live" && workspace.notionAccessToken) {
+        const notion = new NotionClient(workspace.notionAccessToken);
+        notionPageId = await notion.createPage(body.databaseId, {
+          title: body.title,
+          sourceUrl: body.sourceURL,
+          platform: body.platform,
+          tags: body.tags,
+          memo: body.memo,
+          text: body.text,
+          capturedAt: body.capturedAt
+        });
+      } else {
+        notionPageId = `page_${crypto.randomUUID()}`;
+      }
       state.captures[key] = {
         notionPageId,
         databaseId: body.databaseId,
