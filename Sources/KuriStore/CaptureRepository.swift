@@ -15,6 +15,7 @@ public protocol CaptureRepository: Sendable {
     func markFailed(id: UUID, error: SyncError, nextRetryAt: Date?) throws
     func markOCRPending(id: UUID, imageLocalPath: String) throws
     func updateOCR(id: UUID, text: String, title: String) throws
+    func delete(id: UUID) throws
 }
 
 public protocol AppStateRepository: Sendable {
@@ -286,6 +287,21 @@ public final class SQLiteCaptureRepository: @unchecked Sendable, CaptureReposito
                 sqlite3_bind_text(stmt, 2, title, -1, SQLITE_TRANSIENT)
                 try bind(date: .now, to: 3, in: stmt)
                 sqlite3_bind_text(stmt, 4, id.uuidString, -1, SQLITE_TRANSIENT)
+            }
+        }
+    }
+
+    public func delete(id: UUID) throws {
+        try writerQueue.sync {
+            // Get image path before deleting
+            let fetchItem = try self.item(id: id)
+            if let imagePath = fetchItem?.imageLocalPath {
+                try? FileManager.default.removeItem(atPath: imagePath)
+            }
+
+            let query = "DELETE FROM capture_items WHERE id = ?"
+            try runStatement(query) { stmt in
+                sqlite3_bind_text(stmt, 1, id.uuidString, -1, SQLITE_TRANSIENT)
             }
         }
     }

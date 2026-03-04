@@ -194,3 +194,28 @@ import KuriCore
     // installationID should survive disconnect
     #expect(snapshot.installationID != nil)
 }
+
+@Test func deleteItemRemovesCaptureAndImage() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(
+        CaptureDraft(
+            sourceApp: .unknown,
+            sourceURL: nil,
+            sharedText: "Delete me",
+            memo: "",
+            tags: [],
+            imagePayloads: [PendingImage(suggestedFilename: "delete.png", data: Data([0x01]))]
+        )
+    )
+    #expect(item.imageLocalPath != nil)
+
+    try repository.delete(id: item.id)
+
+    #expect(try repository.item(id: item.id) == nil)
+    if let imagePath = item.imageLocalPath {
+        #expect(!FileManager.default.fileExists(atPath: imagePath))
+    }
+}
