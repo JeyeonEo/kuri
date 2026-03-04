@@ -72,6 +72,86 @@ import KuriStore
     #expect(item.lastErrorCode == "missing_database_id")
 }
 
+@Test func syncEngineSchedulesRetryOnServerError() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+    let created = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: URL(string: "https://threads.net/@kuri/post/5"),
+            sharedText: "Retry me",
+            memo: "",
+            tags: [],
+            imagePayloads: []
+        )
+    )
+
+    let scheduler = TestScheduler()
+    let client = FailingTestClient(error: SyncError(code: "http_500", message: "Server error", isRetryable: true))
+    let engine = SyncEngine(
+        repository: repository,
+        client: client,
+        ocrProcessor: TestOCR(),
+        scheduler: scheduler,
+        performanceMonitor: PerformanceMonitor(),
+        databaseIdProvider: { "db-1" }
+    )
+
+    await engine.sync(created)
+
+    let item = try repository.item(id: created.id)!
+    #expect(item.status == .failed)
+    #expect(item.retryCount == 1)
+    #expect(scheduler.scheduled.count == 1)
+    #expect(scheduler.scheduled[0].0 == created.id)
+}
+
+@Test func syncEngineDoesNotScheduleRetryForNonRetryableError() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+    let created = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: URL(string: "https://threads.net/@kuri/post/6"),
+            sharedText: "No retry",
+            memo: "",
+            tags: [],
+            imagePayloads: []
+        )
+    )
+
+    let scheduler = TestScheduler()
+    let client = FailingTestClient(error: SyncError(code: "auth_expired", message: "Unauthorized", isRetryable: false))
+    let engine = SyncEngine(
+        repository: repository,
+        client: client,
+        ocrProcessor: TestOCR(),
+        scheduler: scheduler,
+        performanceMonitor: PerformanceMonitor(),
+        databaseIdProvider: { "db-1" }
+    )
+
+    await engine.sync(created)
+
+    let item = try repository.item(id: created.id)!
+    #expect(item.status == .failed)
+    #expect(scheduler.scheduled.isEmpty)
+}
+
+private final class FailingTestClient: @unchecked Sendable, CaptureSyncClient {
+    let error: SyncError
+
+    init(error: SyncError) {
+        self.error = error
+    }
+
+    func sync(item: CaptureItem, databaseId: String) async throws -> SyncResult {
+        throw error
+    }
+}
+
 private final class TestClient: @unchecked Sendable, CaptureSyncClient {
     var lastText: String?
 
