@@ -25,10 +25,13 @@ targets:
         product: KuriSync
       - package: Kuri
         product: KuriObservability
+    info:
+      properties:
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.kuri.app.sync
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kuri.app
-        INFOPLIST_FILE: KuriApp/Info.plist
         CODE_SIGN_STYLE: Automatic
   KuriShareExtension:
     type: app-extension

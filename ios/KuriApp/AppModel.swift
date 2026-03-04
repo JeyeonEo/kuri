@@ -194,8 +194,23 @@ final class AppModel: ObservableObject {
     }
 }
 
-private final class AppSyncScheduler: SyncScheduler {
-    func triggerForegroundSync() {}
+import BackgroundTasks
 
-    func scheduleRetry(for itemID: UUID, at: Date) {}
+final class AppSyncScheduler: SyncScheduler {
+    static let syncTaskIdentifier = "com.kuri.app.sync"
+
+    func triggerForegroundSync() {
+        // Foreground sync is handled directly by AppModel.triggerForegroundSync()
+    }
+
+    func scheduleRetry(for itemID: UUID, at date: Date) {
+        let request = BGProcessingTaskRequest(identifier: Self.syncTaskIdentifier)
+        request.earliestBeginDate = date
+        request.requiresNetworkConnectivity = true
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            // Best-effort scheduling; sync will retry on next foreground
+        }
+    }
 }

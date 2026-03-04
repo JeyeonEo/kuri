@@ -22,5 +22,8 @@ struct KuriApp: App {
                     }
                 }
         }
+        .backgroundTask(.processing(AppSyncScheduler.syncTaskIdentifier)) {
+            await model.triggerForegroundSync()
+        }
     }
 }
