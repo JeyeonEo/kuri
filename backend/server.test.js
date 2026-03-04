@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { Readable, Writable } from "node:stream";
 import { createHandler } from "./server.js";
+import { NotionClient } from "./notion.js";
 
 async function callHandler(method, url, body) {
   return callHandlerWithHeaders(method, url, body, {}, makeStateFile());
@@ -188,6 +189,30 @@ test("unknown route returns 404", async () => {
 
   assert.equal(response.statusCode, 404);
   assert.equal(response.body.error, "not_found");
+});
+
+test("NotionClient.buildPageBody builds correct request body", async () => {
+  const client = new NotionClient("fake-token");
+  const body = client.buildPageBody("db-123", {
+    title: "Test Title",
+    sourceUrl: "https://threads.net/test",
+    platform: "Threads",
+    tags: ["pm", "ai"],
+    memo: "Test memo",
+    text: "Shared text content",
+    capturedAt: "2026-03-02T13:00:00Z"
+  });
+
+  assert.equal(body.parent.database_id, "db-123");
+  assert.equal(body.properties.Name.title[0].text.content, "Test Title");
+  assert.equal(body.properties.URL.url, "https://threads.net/test");
+  assert.equal(body.properties.Platform.select.name, "Threads");
+  assert.deepEqual(
+    body.properties.Tags.multi_select.map(t => t.name),
+    ["pm", "ai"]
+  );
+  assert.equal(body.properties.Memo.rich_text[0].text.content, "Test memo");
+  assert.equal(body.properties.Text.rich_text[0].text.content, "Shared text content");
 });
 
 async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile()) {
