@@ -64,6 +64,12 @@ export function createHandler(options = {}) {
         createdAt: new Date().toISOString()
       };
       saveState(stateFile, state);
+      if (process.env.NOTION_MODE === "live") {
+        const clientId = process.env.NOTION_CLIENT_ID;
+        const redirectUri = process.env.NOTION_REDIRECT_URI || "http://localhost:8787/v1/oauth/notion/callback";
+        const authorizeUrl = `https://api.notion.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&owner=user&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(oauthState)}`;
+        return json(res, 200, { authorizeUrl });
+      }
       return json(res, 200, {
         authorizeUrl: `http://localhost:8787/v1/oauth/notion/callback?state=${encodeURIComponent(oauthState)}`
       });
@@ -82,11 +88,31 @@ export function createHandler(options = {}) {
       delete state.oauthStarts[oauthState];
 
       const sessionToken = `session_${crypto.randomUUID()}`;
-      const workspace = state.workspaces[installationId] || {
-        databaseId: `db_${crypto.randomUUID()}`,
-        workspaceName: "KURI Workspace",
-        connectionStatus: "connected"
-      };
+      let workspace;
+      if (process.env.NOTION_MODE === "live") {
+        const code = url.searchParams.get("code");
+        if (!code) {
+          return redirect(res, "kuri://oauth/notion?status=failed&reason=missing_code");
+        }
+        const notion = new NotionClient(null);
+        const redirectUri = process.env.NOTION_REDIRECT_URI || "http://localhost:8787/v1/oauth/notion/callback";
+        const tokenResponse = await notion.exchangeOAuthCode(
+          code,
+          process.env.NOTION_CLIENT_ID,
+          process.env.NOTION_CLIENT_SECRET,
+          redirectUri
+        );
+        workspace = state.workspaces[installationId] || {};
+        workspace.notionAccessToken = tokenResponse.access_token;
+        workspace.workspaceName = tokenResponse.workspace_name || "KURI Workspace";
+        workspace.connectionStatus = "connected";
+      } else {
+        workspace = state.workspaces[installationId] || {
+          databaseId: `db_${crypto.randomUUID()}`,
+          workspaceName: "KURI Workspace",
+          connectionStatus: "connected"
+        };
+      }
       state.workspaces[installationId] = workspace;
       state.sessions[sessionToken] = {
         installationId,
@@ -117,8 +143,15 @@ export function createHandler(options = {}) {
           connectionStatus: "connected"
         };
       }
+      const ws = state.workspaces[workspaceId];
+      if (process.env.NOTION_MODE === "live" && ws.notionAccessToken && !ws.realDatabaseCreated) {
+        const notion = new NotionClient(ws.notionAccessToken);
+        const dbId = await notion.createDatabase(ws.rootPageId);
+        ws.databaseId = dbId;
+        ws.realDatabaseCreated = true;
+      }
       saveState(stateFile, state);
-      return json(res, 200, state.workspaces[workspaceId]);
+      return json(res, 200, ws);
     }
 
     if (req.method === "POST" && url.pathname === "/v1/captures/sync") {
