@@ -195,6 +195,67 @@ import KuriCore
     #expect(snapshot.installationID != nil)
 }
 
+@Test func recentTagsIncrementUseCount() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    _ = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: nil,
+            sharedText: "First",
+            memo: "",
+            tags: ["swift"],
+            imagePayloads: []
+        )
+    )
+    _ = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: nil,
+            sharedText: "Second",
+            memo: "",
+            tags: ["swift", "ios"],
+            imagePayloads: []
+        )
+    )
+
+    let tags = try repository.recentTags(limit: 10)
+    let swiftTag = tags.first { $0.name == "swift" }
+    let iosTag = tags.first { $0.name == "ios" }
+    #expect(swiftTag?.useCount == 2)
+    #expect(iosTag?.useCount == 1)
+}
+
+@Test func pendingItemsExcludesFutureRetryItems() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: URL(string: "https://threads.net/@kuri/post/99"),
+            sharedText: "Future retry",
+            memo: "",
+            tags: [],
+            imagePayloads: []
+        )
+    )
+
+    // Mark failed with a future retry date
+    let futureRetry = Date().addingTimeInterval(3600) // 1 hour from now
+    try repository.markFailed(
+        id: item.id,
+        error: SyncError(code: "http_500", message: "Server error", isRetryable: true),
+        nextRetryAt: futureRetry
+    )
+
+    let pending = try repository.pendingItems(limit: 10)
+    #expect(pending.isEmpty)
+}
+
 @Test func deleteItemRemovesCaptureAndImage() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
