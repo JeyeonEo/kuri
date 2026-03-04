@@ -70,15 +70,21 @@ final class KuriTagButton: UIButton {
         self.normalizedValue = normalizedValue
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
-        titleLabel?.font = KuriTypography.button
-        titleLabel?.adjustsFontSizeToFitWidth = true
+
+        var config = UIButton.Configuration.plain()
+        config.contentInsets = NSDirectionalEdgeInsets(top: 11, leading: 16, bottom: 11, trailing: 16)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = KuriTypography.button
+            return outgoing
+        }
+        config.baseForegroundColor = KuriTheme.inkPrimary
+        config.background.backgroundColor = .clear
+        config.title = title.uppercased()
+        self.configuration = config
+
         layer.borderWidth = KuriTheme.borderWidth
         layer.borderColor = KuriTheme.borderSubtle.cgColor
-        contentEdgeInsets = UIEdgeInsets(top: 11, left: 16, bottom: 11, right: 16)
-        setTitle(title.uppercased(), for: .normal)
-        setTitleColor(KuriTheme.inkPrimary, for: .normal)
-        backgroundColor = .clear
-        adjustsImageWhenHighlighted = false
     }
 
     required init?(coder: NSCoder) {
@@ -86,8 +92,8 @@ final class KuriTagButton: UIButton {
     }
 
     func setSelectedStyle(_ isSelected: Bool) {
-        backgroundColor = isSelected ? KuriTheme.inkPrimary : .clear
-        setTitleColor(isSelected ? KuriTheme.surfacePrimary : KuriTheme.inkPrimary, for: .normal)
+        configuration?.background.backgroundColor = isSelected ? KuriTheme.inkPrimary : .clear
+        configuration?.baseForegroundColor = isSelected ? KuriTheme.surfacePrimary : KuriTheme.inkPrimary
         layer.borderColor = (isSelected ? KuriTheme.inkPrimary : KuriTheme.borderSubtle).cgColor
     }
 

@@ -54,6 +54,12 @@ Zero-dependency Node.js server (`server.js`, port 8787). Endpoints: OAuth start/
 2. Images stored in App Group directory; OCR marked pending if image present
 3. `SyncEngine.runPendingSync()` fetches pending items → runs OCR if needed → recalculates title → POSTs to backend → marks synced with `notionPageId`
 
+## API Guidelines
+
+- **UIKit buttons (iOS 17+ target):** Always use `UIButton.Configuration` API. Never use deprecated properties like `contentEdgeInsets`, `adjustsImageWhenHighlighted`, `imageEdgeInsets`, or `titleEdgeInsets`.
+- **SwiftUI background tasks:** The `.backgroundTask` scene modifier only supports `.appRefresh` and `.urlSession` — there is no `.processing` variant. Use `BGAppRefreshTaskRequest` (not `BGProcessingTaskRequest`) when scheduling tasks handled by this modifier.
+- **Plan → code:** When implementing from a plan document, verify API names actually exist before using them. Plan docs may contain hallucinated or confused API names.
+
 ## Key Conventions
 
 - **Swift 6.1 toolchain, Swift 6.0 language mode** — strict concurrency required, all shared types must be `Sendable`

@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -48,7 +48,7 @@
 		1488FC0A82068DBBD6339D86 /* KuriSwiftUITheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriSwiftUITheme.swift; sourceTree = "<group>"; };
 		1D850A8E4525490178B166D9 /* KuriUIKitComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriUIKitComponents.swift; sourceTree = "<group>"; };
 		28ECB709E2348158BB19842D /* TelemetryUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryUploader.swift; sourceTree = "<group>"; };
-		2A3C7D33321EF2047A0F053A /* KuriApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = KuriApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2A3C7D33321EF2047A0F053A /* KuriApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KuriApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		329DBAA9A9F334828422431F /* KuriApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KuriApp.swift; sourceTree = "<group>"; };
 		3DA32AB6A807ED7E1ADE7B0A /* KuriApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KuriApp.entitlements; sourceTree = "<group>"; };
 		56EC396E5C72FABFA742E11C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -228,7 +228,6 @@
 			packageReferences = (
 				72AE521BA0C5744F808B2895 /* XCLocalSwiftPackageReference ".." */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -304,6 +303,7 @@
 				CODE_SIGN_ENTITLEMENTS = KuriApp/KuriApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7T895GHAYZ;
 				INFOPLIST_FILE = KuriApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -460,6 +460,7 @@
 				CODE_SIGN_ENTITLEMENTS = KuriApp/KuriApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7T895GHAYZ;
 				INFOPLIST_FILE = KuriApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (

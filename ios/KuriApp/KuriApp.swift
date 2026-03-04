@@ -22,7 +22,7 @@ struct KuriApp: App {
                     }
                 }
         }
-        .backgroundTask(.processing(AppSyncScheduler.syncTaskIdentifier)) {
+        .backgroundTask(.appRefresh(AppSyncScheduler.syncTaskIdentifier)) {
             await model.triggerForegroundSync()
         }
     }

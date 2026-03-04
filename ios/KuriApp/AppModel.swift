@@ -40,7 +40,7 @@ final class AppModel: ObservableObject {
         let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared")!
             .appendingPathComponent("Kuri", isDirectory: true)
         let repository = try! StoreEnvironment.makeRepository(baseDirectory: base)
-        let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://localhost:8787")!)
+        let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://192.168.0.23:8787")!)
         let client = URLSessionCaptureSyncClient(baseURL: connectionClient.baseURL) { [weak repository] in
             guard let repository else { return nil }
             return try? repository.string(for: .sessionToken)
@@ -228,9 +228,8 @@ final class AppSyncScheduler: SyncScheduler {
     }
 
     func scheduleRetry(for itemID: UUID, at date: Date) {
-        let request = BGProcessingTaskRequest(identifier: Self.syncTaskIdentifier)
+        let request = BGAppRefreshTaskRequest(identifier: Self.syncTaskIdentifier)
         request.earliestBeginDate = date
-        request.requiresNetworkConnectivity = true
         do {
             try BGTaskScheduler.shared.submit(request)
         } catch {
