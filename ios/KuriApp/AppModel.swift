@@ -37,9 +37,16 @@ final class AppModel: ObservableObject {
     }
 
     static func bootstrap() -> AppModel {
-        let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared")!
-            .appendingPathComponent("Kuri", isDirectory: true)
-        let repository = try! StoreEnvironment.makeRepository(baseDirectory: base)
+        guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared") else {
+            fatalError("App Group container 'group.com.yona.kuri.shared' is not configured. Check Signing & Capabilities.")
+        }
+        let base = groupURL.appendingPathComponent("Kuri", isDirectory: true)
+        let repository: SQLiteCaptureRepository
+        do {
+            repository = try StoreEnvironment.makeRepository(baseDirectory: base)
+        } catch {
+            fatalError("Failed to initialize database: \(error.localizedDescription)")
+        }
         let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://192.168.0.23:8787")!)
         let client = URLSessionCaptureSyncClient(baseURL: connectionClient.baseURL) { [weak repository] in
             guard let repository else { return nil }

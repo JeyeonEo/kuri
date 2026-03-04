@@ -50,8 +50,14 @@ final class ShareViewController: UIViewController {
 
     private lazy var performanceMonitor = PerformanceMonitor()
     private lazy var repository: SQLiteCaptureRepository = {
-        let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared")!
-        return try! StoreEnvironment.makeRepository(baseDirectory: root)
+        guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared") else {
+            fatalError("App Group container 'group.com.yona.kuri.shared' is not configured. Check Signing & Capabilities.")
+        }
+        do {
+            return try StoreEnvironment.makeRepository(baseDirectory: root)
+        } catch {
+            fatalError("Failed to initialize database: \(error.localizedDescription)")
+        }
     }()
 
     override func viewDidLoad() {
