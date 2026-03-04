@@ -55,6 +55,7 @@ export function createHandler(options = {}) {
     const url = new URL(req.url, "http://localhost");
     const state = ensureState(stateFile);
 
+    try {
     if (req.method === "POST" && url.pathname === "/v1/oauth/notion/start") {
       const body = await readJSON(req);
       const installationId = body.installationId || crypto.randomUUID();
@@ -208,12 +209,25 @@ export function createHandler(options = {}) {
     }
 
     return json(res, 404, { error: "not_found" });
+    } catch (err) {
+      if (err.statusCode === 413) {
+        return json(res, 413, { error: "payload_too_large" });
+      }
+      return json(res, 500, { error: "internal" });
+    }
   };
 }
 
+const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
+
 async function readJSON(req) {
   const chunks = [];
+  let totalBytes = 0;
   for await (const chunk of req) {
+    totalBytes += chunk.length;
+    if (totalBytes > MAX_BODY_BYTES) {
+      throw Object.assign(new Error("payload_too_large"), { statusCode: 413 });
+    }
     chunks.push(chunk);
   }
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};

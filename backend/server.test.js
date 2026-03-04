@@ -274,6 +274,33 @@ test("full flow: oauth -> bootstrap -> sync -> duplicate returns same pageId", a
   assert.equal(sync2.body.notionPageId, sync1.body.notionPageId);
 });
 
+test("rejects request body exceeding 1MB", async () => {
+  const stateFile = makeStateFile();
+  const largeBody = Buffer.alloc(1024 * 1024 + 1, "x");
+  const req = Readable.from(largeBody);
+  req.method = "POST";
+  req.url = "/v1/telemetry/client-performance";
+  req.headers = { "content-type": "application/json" };
+
+  let raw = "";
+  const res = new Writable({
+    write(chunk, _encoding, callback) { raw += chunk.toString(); callback(); }
+  });
+  res.statusCode = 200;
+  res.headers = {};
+  res.writeHead = function writeHead(statusCode, responseHeaders) {
+    this.statusCode = statusCode; this.headers = responseHeaders; return this;
+  };
+  res.end = function end(chunk) {
+    if (chunk) raw += chunk.toString(); this.emit("finish"); return this;
+  };
+
+  const handler = createHandler({ stateFile });
+  await handler(req, res);
+  assert.equal(res.statusCode, 413);
+  assert.equal(JSON.parse(raw).error, "payload_too_large");
+});
+
 async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile()) {
   return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile);
 }
