@@ -236,6 +236,7 @@ export function createHandler(options = {}) {
       const token = bearerToken(req);
       const session = validSession(state, token);
       if (!session) {
+        saveState(stateFile, state);
         return json(res, 401, { error: "unauthorized" });
       }
       const body = await readJSON(req);
