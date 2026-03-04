@@ -90,3 +90,83 @@ import KuriCore
     let pending = try repository.pendingItems(limit: 10)
     #expect(pending.isEmpty)
 }
+
+@Test func markSyncedUpdatesStatusAndNotionPageID() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: URL(string: "https://threads.net/@kuri/post/3"),
+            sharedText: "Sync me",
+            memo: "",
+            tags: [],
+            imagePayloads: []
+        )
+    )
+
+    try repository.markSyncing(id: item.id)
+    try repository.markSynced(id: item.id, notionPageID: "page-abc", syncedAt: Date())
+
+    let synced = try repository.item(id: item.id)!
+    #expect(synced.status == .synced)
+    #expect(synced.notionPageID == "page-abc")
+    #expect(synced.syncedAt != nil)
+}
+
+@Test func markFailedRecordsErrorAndRetryDate() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(
+        CaptureDraft(
+            sourceApp: .x,
+            sourceURL: URL(string: "https://x.com/test/1"),
+            sharedText: "Will fail",
+            memo: "",
+            tags: ["test"],
+            imagePayloads: []
+        )
+    )
+
+    let nextRetry = Date().addingTimeInterval(120)
+    try repository.markFailed(
+        id: item.id,
+        error: SyncError(code: "http_500", message: "Internal server error", isRetryable: true),
+        nextRetryAt: nextRetry
+    )
+
+    let failed = try repository.item(id: item.id)!
+    #expect(failed.status == .failed)
+    #expect(failed.lastErrorCode == "http_500")
+    #expect(failed.retryCount == 1)
+    #expect(failed.nextRetryAt != nil)
+}
+
+@Test func updateOCRSetsTextAndNewTitle() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(
+        CaptureDraft(
+            sourceApp: .unknown,
+            sourceURL: nil,
+            sharedText: nil,
+            memo: "",
+            tags: [],
+            imagePayloads: [PendingImage(suggestedFilename: "img.png", data: Data([0x01]))]
+        )
+    )
+    #expect(item.ocrStatus == .pending)
+
+    try repository.updateOCR(id: item.id, text: "Extracted text", title: "Extracted text")
+
+    let updated = try repository.item(id: item.id)!
+    #expect(updated.ocrStatus == .completed)
+    #expect(updated.ocrText == "Extracted text")
+    #expect(updated.title == "Extracted text")
+}
