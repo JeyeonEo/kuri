@@ -47,7 +47,18 @@ final class AppModel: ObservableObject {
         } catch {
             fatalError("Failed to initialize database: \(error.localizedDescription)")
         }
-        let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://192.168.0.23:8787")!)
+        let backendURL: URL
+        if let envURL = ProcessInfo.processInfo.environment["KURI_BACKEND_URL"],
+           let parsed = URL(string: envURL) {
+            backendURL = parsed
+        } else {
+            #if DEBUG
+            backendURL = URL(string: "http://localhost:8787")!
+            #else
+            backendURL = URL(string: "https://api.kuri.app")!
+            #endif
+        }
+        let connectionClient = NotionConnectionClient(baseURL: backendURL)
         let client = URLSessionCaptureSyncClient(baseURL: connectionClient.baseURL) { [weak repository] in
             guard let repository else { return nil }
             return try? repository.string(for: .sessionToken)
