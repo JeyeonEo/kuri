@@ -170,3 +170,27 @@ import KuriCore
     #expect(updated.ocrText == "Extracted text")
     #expect(updated.title == "Extracted text")
 }
+
+@Test func clearConnectionStateRemovesSessionAndConnectionInfo() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    try repository.setString("session-token", for: .sessionToken)
+    try repository.setString("db-123", for: .databaseID)
+    try repository.setString("KURI Workspace", for: .workspaceName)
+    try repository.setString(ConnectionStatus.connected.rawValue, for: .connectionStatus)
+
+    try repository.setString(nil, for: .sessionToken)
+    try repository.setString(nil, for: .databaseID)
+    try repository.setString(nil, for: .workspaceName)
+    try repository.setString(ConnectionStatus.disconnected.rawValue, for: .connectionStatus)
+
+    let snapshot = try repository.snapshot()
+    #expect(snapshot.sessionToken == nil)
+    #expect(snapshot.databaseID == nil)
+    #expect(snapshot.workspaceName == nil)
+    #expect(snapshot.connectionStatus == .disconnected)
+    // installationID should survive disconnect
+    #expect(snapshot.installationID != nil)
+}
