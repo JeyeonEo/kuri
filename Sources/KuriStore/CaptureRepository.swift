@@ -19,6 +19,7 @@ public protocol CaptureRepository: Sendable {
     func delete(id: UUID) throws
     func renameTag(_ oldName: String, to newName: String) throws
     func deleteTag(_ name: String) throws
+    func mergeTags(source: String, into target: String) throws
 }
 
 public protocol AppStateRepository: Sendable {
@@ -429,6 +430,10 @@ public final class SQLiteCaptureRepository: @unchecked Sendable, CaptureReposito
                 throw error
             }
         }
+    }
+
+    public func mergeTags(source: String, into target: String) throws {
+        try renameTag(source, to: target)
     }
 
     public func deleteTag(_ name: String) throws {

@@ -378,6 +378,30 @@ import KuriCore
     #expect(allTags.count == 1)
 }
 
+@Test func mergeTagsCombinesSourceIntoTarget() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "A", memo: "", tags: ["dev"], imagePayloads: []))
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "B", memo: "", tags: ["development"], imagePayloads: []))
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "C", memo: "", tags: ["dev", "development"], imagePayloads: []))
+
+    try repository.mergeTags(source: "dev", into: "development")
+
+    let allTags = try repository.allTags()
+    #expect(allTags.count == 1)
+    #expect(allTags[0].name == "development")
+    #expect(allTags[0].useCount == 4)  // dev(2) + development(2) merged
+
+    let items = try repository.recentItems(limit: 10)
+    for item in items {
+        #expect(!item.tags.contains("dev"))
+        #expect(item.tags.contains("development"))
+        #expect(item.tags.filter { $0 == "development" }.count == 1)
+    }
+}
+
 @Test func renameTagToExistingNameMerges() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
