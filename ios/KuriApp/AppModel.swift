@@ -26,6 +26,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var allTags: [RecentTag] = []
     @Published var bannerMessage: String?
 
+    private var lastSyncTriggeredAt: Date?
+
     private let repository: SQLiteCaptureRepository
     private let stateRepository: any AppStateRepository
     private let syncEngine: SyncEngine
@@ -182,7 +184,14 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func shouldThrottleSync() -> Bool {
+        guard let last = lastSyncTriggeredAt else { return false }
+        return Date().timeIntervalSince(last) < 30
+    }
+
     func triggerForegroundSync() async {
+        guard !shouldThrottleSync() else { return }
+        lastSyncTriggeredAt = .now
         loadState()
         guard isSignedIn else {
             bannerMessage = "로그인 후 동기화할 수 있어요."
@@ -254,11 +263,17 @@ final class AppModel: ObservableObject {
     }
 
     func renameTag(_ oldName: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.count <= 100 else {
+            bannerMessage = "유효한 태그 이름을 입력해 주세요"
+            return
+        }
         do {
             try repository.renameTag(oldName, to: newName)
             loadTags()
             reload()
         } catch {
+            print("[AppModel] renameTag failed: \(error)")
             bannerMessage = "태그 이름을 변경할 수 없습니다"
         }
     }
@@ -269,18 +284,27 @@ final class AppModel: ObservableObject {
             loadTags()
             reload()
         } catch {
+            print("[AppModel] deleteTag failed: \(error)")
             bannerMessage = "태그를 삭제할 수 없습니다"
         }
     }
 
     func mergeTags(sources: [String], into target: String) {
+        let normalizedTarget = target.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !normalizedTarget.isEmpty, normalizedTarget.count <= 100 else {
+            bannerMessage = "유효한 태그 이름을 입력해 주세요"
+            return
+        }
         do {
-            for source in sources where source != target {
+            for source in sources {
+                let normalizedSource = source.trimmingCharacters(in: .whitespaces).lowercased()
+                guard normalizedSource != normalizedTarget else { continue }
                 try repository.mergeTags(source: source, into: target)
             }
             loadTags()
             reload()
         } catch {
+            print("[AppModel] mergeTags failed: \(error)")
             bannerMessage = "태그를 병합할 수 없습니다"
         }
     }
@@ -344,6 +368,16 @@ final class AppSyncScheduler: SyncScheduler {
             try BGTaskScheduler.shared.submit(request)
         } catch {
             // Best-effort scheduling; sync will retry on next foreground
+        }
+    }
+
+    func scheduleNextRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: Self.syncTaskIdentifier)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            // Best-effort; sync will run on next foreground
         }
     }
 }
