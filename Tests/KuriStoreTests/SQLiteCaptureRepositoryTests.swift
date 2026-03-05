@@ -348,6 +348,36 @@ import KuriCore
     #expect(!tagNames.contains("swift"))
 }
 
+@Test func deleteTagRemovesFromAllCapturesAndRecentTags() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "A", memo: "", tags: ["swift", "ios"], imagePayloads: []))
+
+    try repository.deleteTag("swift")
+
+    let updated = try repository.item(id: item.id)
+    #expect(updated?.tags == ["ios"])
+
+    let allTags = try repository.allTags()
+    #expect(!allTags.map(\.name).contains("swift"))
+    #expect(allTags.map(\.name).contains("ios"))
+}
+
+@Test func deleteNonExistentTagIsNoOp() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "A", memo: "", tags: ["swift"], imagePayloads: []))
+
+    try repository.deleteTag("nonexistent")
+
+    let allTags = try repository.allTags()
+    #expect(allTags.count == 1)
+}
+
 @Test func renameTagToExistingNameMerges() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
