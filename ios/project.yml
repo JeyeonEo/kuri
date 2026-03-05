@@ -28,6 +28,11 @@ targets:
         product: KuriSync
       - package: Kuri
         product: KuriObservability
+    info:
+      path: KuriApp/Info.plist
+      properties:
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.yona.kuri.app.sync
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yona.kuri.app
