@@ -23,6 +23,12 @@ struct SettingsView: View {
                 }
             }
 
+            Section("태그") {
+                NavigationLink("태그 관리") {
+                    TagManagementView(model: model)
+                }
+            }
+
             Section("정보") {
                 HStack {
                     Text("버전")
