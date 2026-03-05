@@ -23,6 +23,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var lastSyncAt: Date?
     @Published private(set) var isBootstrapping = false
     @Published private(set) var authState: AuthState = .unknown
+    @Published private(set) var allTags: [RecentTag] = []
     @Published var bannerMessage: String?
 
     private let repository: SQLiteCaptureRepository
@@ -242,6 +243,46 @@ final class AppModel: ObservableObject {
         workspaceName = nil
         databaseID = nil
         bannerMessage = "Notion 연결이 해제됐어요."
+    }
+
+    func loadTags() {
+        do {
+            allTags = try repository.allTags()
+        } catch {
+            bannerMessage = "태그를 불러올 수 없습니다"
+        }
+    }
+
+    func renameTag(_ oldName: String, to newName: String) {
+        do {
+            try repository.renameTag(oldName, to: newName)
+            loadTags()
+            reload()
+        } catch {
+            bannerMessage = "태그 이름을 변경할 수 없습니다"
+        }
+    }
+
+    func deleteTag(_ name: String) {
+        do {
+            try repository.deleteTag(name)
+            loadTags()
+            reload()
+        } catch {
+            bannerMessage = "태그를 삭제할 수 없습니다"
+        }
+    }
+
+    func mergeTags(sources: [String], into target: String) {
+        do {
+            for source in sources where source != target {
+                try repository.mergeTags(source: source, into: target)
+            }
+            loadTags()
+            reload()
+        } catch {
+            bannerMessage = "태그를 병합할 수 없습니다"
+        }
     }
 
     func deleteItem(_ item: CaptureItem) {
