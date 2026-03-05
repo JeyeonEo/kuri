@@ -35,6 +35,54 @@ export class NotionClient {
     return { parent: { database_id: databaseId }, properties };
   }
 
+  async searchPages() {
+    const response = await fetch(`${this.baseURL}/search`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json",
+        "Notion-Version": this.notionVersion
+      },
+      body: JSON.stringify({
+        filter: { property: "object", value: "page" },
+        page_size: 1
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Notion API error ${response.status}: ${error}`);
+    }
+
+    const result = await response.json();
+    return result.results;
+  }
+
+  async createRootPage(title = "KURI") {
+    const response = await fetch(`${this.baseURL}/pages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json",
+        "Notion-Version": this.notionVersion
+      },
+      body: JSON.stringify({
+        parent: { type: "workspace", workspace: true },
+        properties: {
+          title: [{ text: { content: title } }]
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Notion API error ${response.status}: ${error}`);
+    }
+
+    const result = await response.json();
+    return result.id;
+  }
+
   async createPage(databaseId, capture) {
     const body = this.buildPageBody(databaseId, capture);
     const response = await fetch(`${this.baseURL}/pages`, {

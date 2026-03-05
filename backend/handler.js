@@ -205,7 +205,9 @@ export function createWorkerHandler(env, store) {
           redirectURL.searchParams.set("status", "success");
           redirectURL.searchParams.set("sessionToken", sessionToken);
           redirectURL.searchParams.set("workspaceName", workspace.workspaceName);
-          redirectURL.searchParams.set("databaseId", workspace.databaseId);
+          if (workspace.databaseId) {
+            redirectURL.searchParams.set("databaseId", workspace.databaseId);
+          }
           return redirectResponse(redirectURL.toString());
         }
 
@@ -228,6 +230,14 @@ export function createWorkerHandler(env, store) {
           const ws = state.workspaces[workspaceId];
           if (env.NOTION_MODE === "live" && ws.notionAccessToken && !ws.realDatabaseCreated) {
             const notion = new NotionClient(ws.notionAccessToken);
+            if (!ws.rootPageId) {
+              const pages = await notion.searchPages();
+              if (pages.length > 0) {
+                ws.rootPageId = pages[0].id;
+              } else {
+                ws.rootPageId = await notion.createRootPage();
+              }
+            }
             const dbId = await notion.createDatabase(ws.rootPageId);
             ws.databaseId = dbId;
             ws.realDatabaseCreated = true;

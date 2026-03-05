@@ -380,11 +380,11 @@ test("rejects request body exceeding 1MB", async () => {
   assert.equal(JSON.parse(raw).error, "payload_too_large");
 });
 
-async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile()) {
-  return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile);
+async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile(), envOverrides = {}) {
+  return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile, envOverrides);
 }
 
-async function callHandlerWithHeadersUsingState(method, url, body, headers, stateFile) {
+async function callHandlerWithHeadersUsingState(method, url, body, headers, stateFile, envOverrides = {}) {
   const payload = body ? Buffer.from(JSON.stringify(body)) : Buffer.alloc(0);
   const req = Readable.from(payload);
   req.method = method;
@@ -411,7 +411,7 @@ async function callHandlerWithHeadersUsingState(method, url, body, headers, stat
     return this;
   };
 
-  const handler = createHandler({ stateFile });
+  const handler = createHandler({ stateFile, env: envOverrides });
   await handler(req, res);
   return {
     statusCode: res.statusCode,
@@ -478,6 +478,123 @@ test("apple auth migrates installation workspace to user", async () => {
   const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
   assert.ok(state.workspaces[installationId]);
   assert.equal(state.workspaces[installationId].userId, undefined);
+});
+
+test("NotionClient has searchPages and createRootPage methods", () => {
+  const client = new NotionClient("test_token");
+  assert.ok(typeof client.searchPages === "function");
+  assert.ok(typeof client.createRootPage === "function");
+});
+
+test("oauth callback in live mode does not include undefined databaseId", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+  const callback = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+
+  assert.equal(callback.statusCode, 302);
+  const location = callback.headers.Location;
+  // In mock mode databaseId is set, but it should never be "undefined"
+  assert.ok(!location.includes("databaseId=undefined"));
+});
+
+test("live mode: full flow oauth → bootstrap → sync with mocked Notion API", async () => {
+  const stateFile = makeStateFile();
+
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    const urlStr = typeof url === "string" ? url : url.toString();
+
+    if (urlStr.includes("/oauth/token")) {
+      return new Response(JSON.stringify({
+        access_token: "secret_live_token",
+        workspace_name: "Test Live Workspace"
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/search")) {
+      return new Response(JSON.stringify({
+        results: [{ id: "page_root_123", object: "page" }]
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/databases")) {
+      return new Response(JSON.stringify({
+        id: "db_live_456"
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/pages")) {
+      return new Response(JSON.stringify({
+        id: "page_live_789"
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return originalFetch(url, options);
+  };
+
+  try {
+    const liveEnv = {
+      NOTION_MODE: "live",
+      NOTION_CLIENT_ID: "test_client_id",
+      NOTION_CLIENT_SECRET: "test_client_secret",
+      NOTION_REDIRECT_URI: "http://localhost:8787/v1/oauth/notion/callback"
+    };
+
+    // 1. OAuth start
+    const startRes = await callHandlerWithHeaders(
+      "POST", "/v1/oauth/notion/start", { installationId: "live-test" },
+      {}, stateFile, liveEnv
+    );
+    assert.equal(startRes.statusCode, 200);
+    assert.ok(startRes.body.authorizeUrl.includes("api.notion.com"));
+
+    const authorizeURL = new URL(startRes.body.authorizeUrl);
+    const oauthState = authorizeURL.searchParams.get("state");
+
+    // 2. OAuth callback
+    const callbackRes = await callHandlerWithHeaders(
+      "GET", `/v1/oauth/notion/callback?state=${encodeURIComponent(oauthState)}&code=test_auth_code`,
+      null, {}, stateFile, liveEnv
+    );
+    assert.equal(callbackRes.statusCode, 302);
+    const location = callbackRes.headers.Location;
+    const redirectURL = new URL(location);
+    assert.equal(redirectURL.searchParams.get("status"), "success");
+    const sessionToken = redirectURL.searchParams.get("sessionToken");
+    assert.ok(sessionToken);
+
+    // 3. Bootstrap
+    const bootstrapRes = await callHandlerWithHeaders(
+      "POST", "/v1/workspaces/bootstrap", { installationId: "live-test" },
+      { authorization: `Bearer ${sessionToken}` }, stateFile, liveEnv
+    );
+    assert.equal(bootstrapRes.statusCode, 200);
+    assert.equal(bootstrapRes.body.databaseId, "db_live_456");
+
+    // 4. Sync
+    const syncRes = await callHandlerWithHeaders(
+      "POST", "/v1/captures/sync",
+      {
+        clientItemId: "550e8400-e29b-41d4-a716-446655440000",
+        databaseId: "db_live_456",
+        title: "Test Capture",
+        sourceURL: "https://example.com",
+        platform: "Web",
+        tags: ["test"],
+        memo: "A test memo",
+        capturedAt: "2026-03-05T12:00:00Z"
+      },
+      { authorization: `Bearer ${sessionToken}` }, stateFile, liveEnv
+    );
+    assert.equal(syncRes.statusCode, 200);
+    assert.equal(syncRes.body.result, "created");
+    assert.equal(syncRes.body.notionPageId, "page_live_789");
+  } finally {
+    global.fetch = originalFetch;
+  }
 });
 
 function makeStateFile() {
