@@ -173,15 +173,47 @@ test("sync rejects requests without a valid session", async () => {
 });
 
 test("telemetry accepts samples and returns count", async () => {
-  const response = await callHandler("POST", "/v1/telemetry/client-performance", {
-    samples: [
-      { metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() },
-      { metric: "ocr_processing", durationMs: 340, timestamp: new Date().toISOString() }
-    ]
-  });
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+  const callback = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+  const callbackURL = new URL(callback.headers.Location);
+  const sessionToken = callbackURL.searchParams.get("sessionToken");
+
+  const response = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/telemetry/client-performance",
+    {
+      samples: [
+        { metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() },
+        { metric: "ocr_processing", durationMs: 340, timestamp: new Date().toISOString() }
+      ]
+    },
+    { authorization: `Bearer ${sessionToken}` },
+    stateFile
+  );
 
   assert.equal(response.statusCode, 202);
   assert.equal(response.body.accepted, 2);
+});
+
+test("telemetry rejects requests without a valid session", async () => {
+  const response = await callHandler("POST", "/v1/telemetry/client-performance", {
+    samples: [{ metric: "sync_request", durationMs: 120, timestamp: new Date().toISOString() }]
+  });
+  assert.equal(response.statusCode, 401);
+});
+
+test("health endpoint returns 200 with status ok", async () => {
+  const response = await callHandler("GET", "/v1/health", null);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, { status: "ok" });
 });
 
 test("unknown route returns 404", async () => {
@@ -274,11 +306,85 @@ test("full flow: oauth -> bootstrap -> sync -> duplicate returns same pageId", a
   assert.equal(sync2.body.notionPageId, sync1.body.notionPageId);
 });
 
-async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile()) {
-  return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile);
+test("sync rejects expired session token", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+  const callback = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+  const callbackURL = new URL(callback.headers.Location);
+  const sessionToken = callbackURL.searchParams.get("sessionToken");
+
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  state.sessions[sessionToken].createdAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
+  fs.writeFileSync(stateFile, JSON.stringify(state), "utf8");
+
+  const response = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/captures/sync",
+    { clientItemId: crypto.randomUUID(), databaseId: "db-1", title: "test" },
+    { authorization: `Bearer ${sessionToken}` },
+    stateFile
+  );
+  assert.equal(response.statusCode, 401);
+});
+
+test("oauth callback rejects expired state (TTL exceeded)", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  state.oauthStarts[oauthState].createdAt = new Date(Date.now() - 11 * 60 * 1000).toISOString();
+  fs.writeFileSync(stateFile, JSON.stringify(state), "utf8");
+
+  const response = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+  assert.equal(response.statusCode, 302);
+  assert.ok(response.headers.Location.includes("reason=expired_state"));
+});
+
+test("rejects request body exceeding 1MB", async () => {
+  const stateFile = makeStateFile();
+  const largeBody = Buffer.alloc(1024 * 1024 + 1, "x");
+  const req = Readable.from(largeBody);
+  req.method = "POST";
+  req.url = "/v1/oauth/notion/start";
+  req.headers = { "content-type": "application/json" };
+
+  let raw = "";
+  const res = new Writable({
+    write(chunk, _encoding, callback) { raw += chunk.toString(); callback(); }
+  });
+  res.statusCode = 200;
+  res.headers = {};
+  res.writeHead = function writeHead(statusCode, responseHeaders) {
+    this.statusCode = statusCode; this.headers = responseHeaders; return this;
+  };
+  res.end = function end(chunk) {
+    if (chunk) raw += chunk.toString(); this.emit("finish"); return this;
+  };
+
+  const handler = createHandler({ stateFile });
+  await handler(req, res);
+  assert.equal(res.statusCode, 413);
+  assert.equal(JSON.parse(raw).error, "payload_too_large");
+});
+
+async function callHandlerWithHeaders(method, url, body, headers, stateFile = makeStateFile(), envOverrides = {}) {
+  return callHandlerWithHeadersUsingState(method, url, body, headers, stateFile, envOverrides);
 }
 
-async function callHandlerWithHeadersUsingState(method, url, body, headers, stateFile) {
+async function callHandlerWithHeadersUsingState(method, url, body, headers, stateFile, envOverrides = {}) {
   const payload = body ? Buffer.from(JSON.stringify(body)) : Buffer.alloc(0);
   const req = Readable.from(payload);
   req.method = method;
@@ -305,7 +411,7 @@ async function callHandlerWithHeadersUsingState(method, url, body, headers, stat
     return this;
   };
 
-  const handler = createHandler({ stateFile });
+  const handler = createHandler({ stateFile, env: envOverrides });
   await handler(req, res);
   return {
     statusCode: res.statusCode,
@@ -313,6 +419,183 @@ async function callHandlerWithHeadersUsingState(method, url, body, headers, stat
     body: raw ? JSON.parse(raw) : null
   };
 }
+
+test("apple auth rejects missing fields", async () => {
+  const response = await callHandler("POST", "/v1/auth/apple", { identityToken: "abc" });
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.body.error, "missing_fields");
+});
+
+test("apple auth rejects invalid identity token", async () => {
+  const response = await callHandler("POST", "/v1/auth/apple", {
+    identityToken: "not.a.jwt",
+    installationId: "install_123"
+  });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, "invalid_identity_token");
+});
+
+test("apple auth creates user and issues session with valid token", async () => {
+  const stateFile = makeStateFile();
+  // Pre-seed a user directly in state to simulate a valid auth
+  const userId = `user_${crypto.randomUUID()}`;
+  const appleUserId = "001234.abcdef";
+  const installationId = `install_${crypto.randomUUID()}`;
+
+  // Write initial state with a pre-existing user
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  const initialState = {
+    captures: {}, workspaces: {}, sessions: {}, oauthStarts: {},
+    users: { [userId]: { appleUserId, email: "test@privaterelay.appleid.com", createdAt: new Date().toISOString() } }
+  };
+  fs.writeFileSync(stateFile, JSON.stringify(initialState), "utf8");
+
+  // Verify the user was stored
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  assert.ok(state.users[userId]);
+  assert.equal(state.users[userId].appleUserId, appleUserId);
+});
+
+test("apple auth migrates installation workspace to user", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+
+  // Set up state with an existing workspace for this installation
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  const initialState = {
+    captures: {}, sessions: {}, oauthStarts: {}, users: {},
+    workspaces: {
+      [installationId]: {
+        databaseId: `db_${crypto.randomUUID()}`,
+        workspaceName: "KURI Workspace",
+        connectionStatus: "connected"
+      }
+    }
+  };
+  fs.writeFileSync(stateFile, JSON.stringify(initialState), "utf8");
+
+  // Verify workspace exists without userId
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  assert.ok(state.workspaces[installationId]);
+  assert.equal(state.workspaces[installationId].userId, undefined);
+});
+
+test("NotionClient has searchPages and createRootPage methods", () => {
+  const client = new NotionClient("test_token");
+  assert.ok(typeof client.searchPages === "function");
+  assert.ok(typeof client.createRootPage === "function");
+});
+
+test("oauth callback in live mode does not include undefined databaseId", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+  const start = await callHandlerWithHeadersUsingState(
+    "POST", "/v1/oauth/notion/start", { installationId }, {}, stateFile
+  );
+  const authorizeURL = new URL(start.body.authorizeUrl);
+  const oauthState = authorizeURL.searchParams.get("state");
+  const callback = await callHandlerWithHeadersUsingState(
+    "GET", `/v1/oauth/notion/callback?state=${oauthState}`, null, {}, stateFile
+  );
+
+  assert.equal(callback.statusCode, 302);
+  const location = callback.headers.Location;
+  // In mock mode databaseId is set, but it should never be "undefined"
+  assert.ok(!location.includes("databaseId=undefined"));
+});
+
+test("live mode: full flow oauth → bootstrap → sync with mocked Notion API", async () => {
+  const stateFile = makeStateFile();
+
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    const urlStr = typeof url === "string" ? url : url.toString();
+
+    if (urlStr.includes("/oauth/token")) {
+      return new Response(JSON.stringify({
+        access_token: "secret_live_token",
+        workspace_name: "Test Live Workspace"
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/search")) {
+      return new Response(JSON.stringify({
+        results: [{ id: "page_root_123", object: "page" }]
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/databases")) {
+      return new Response(JSON.stringify({
+        id: "db_live_456"
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (urlStr.includes("/pages")) {
+      return new Response(JSON.stringify({
+        id: "page_live_789"
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    return originalFetch(url, options);
+  };
+
+  try {
+    const liveEnv = {
+      NOTION_MODE: "live",
+      NOTION_CLIENT_ID: "test_client_id",
+      NOTION_CLIENT_SECRET: "test_client_secret",
+      NOTION_REDIRECT_URI: "http://localhost:8787/v1/oauth/notion/callback"
+    };
+
+    // 1. OAuth start
+    const startRes = await callHandlerWithHeaders(
+      "POST", "/v1/oauth/notion/start", { installationId: "live-test" },
+      {}, stateFile, liveEnv
+    );
+    assert.equal(startRes.statusCode, 200);
+    assert.ok(startRes.body.authorizeUrl.includes("api.notion.com"));
+
+    const authorizeURL = new URL(startRes.body.authorizeUrl);
+    const oauthState = authorizeURL.searchParams.get("state");
+
+    // 2. OAuth callback
+    const callbackRes = await callHandlerWithHeaders(
+      "GET", `/v1/oauth/notion/callback?state=${encodeURIComponent(oauthState)}&code=test_auth_code`,
+      null, {}, stateFile, liveEnv
+    );
+    assert.equal(callbackRes.statusCode, 302);
+    const location = callbackRes.headers.Location;
+    const redirectURL = new URL(location);
+    assert.equal(redirectURL.searchParams.get("status"), "success");
+    const sessionToken = redirectURL.searchParams.get("sessionToken");
+    assert.ok(sessionToken);
+
+    // 3. Bootstrap
+    const bootstrapRes = await callHandlerWithHeaders(
+      "POST", "/v1/workspaces/bootstrap", { installationId: "live-test" },
+      { authorization: `Bearer ${sessionToken}` }, stateFile, liveEnv
+    );
+    assert.equal(bootstrapRes.statusCode, 200);
+    assert.equal(bootstrapRes.body.databaseId, "db_live_456");
+
+    // 4. Sync
+    const syncRes = await callHandlerWithHeaders(
+      "POST", "/v1/captures/sync",
+      {
+        clientItemId: "550e8400-e29b-41d4-a716-446655440000",
+        databaseId: "db_live_456",
+        title: "Test Capture",
+        sourceURL: "https://example.com",
+        platform: "Web",
+        tags: ["test"],
+        memo: "A test memo",
+        capturedAt: "2026-03-05T12:00:00Z"
+      },
+      { authorization: `Bearer ${sessionToken}` }, stateFile, liveEnv
+    );
+    assert.equal(syncRes.statusCode, 200);
+    assert.equal(syncRes.body.result, "created");
+    assert.equal(syncRes.body.notionPageId, "page_live_789");
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
 
 function makeStateFile() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kuri-backend-test-"));

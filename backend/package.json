@@ -5,6 +5,11 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "deploy": "wrangler deploy",
+    "dev:worker": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.70.0"
   }
 }

@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import SwiftUI
 import UIKit
@@ -5,6 +6,12 @@ import KuriCore
 import KuriStore
 import KuriSync
 import KuriObservability
+
+enum AuthState: Equatable {
+    case unknown
+    case signedOut
+    case signedIn(AuthUser)
+}
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -15,7 +22,11 @@ final class AppModel: ObservableObject {
     @Published private(set) var databaseID: String?
     @Published private(set) var lastSyncAt: Date?
     @Published private(set) var isBootstrapping = false
+    @Published private(set) var authState: AuthState = .unknown
+    @Published private(set) var allTags: [RecentTag] = []
     @Published var bannerMessage: String?
+
+    private var lastSyncTriggeredAt: Date?
 
     private let repository: SQLiteCaptureRepository
     private let stateRepository: any AppStateRepository
@@ -37,10 +48,28 @@ final class AppModel: ObservableObject {
     }
 
     static func bootstrap() -> AppModel {
-        let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared")!
-            .appendingPathComponent("Kuri", isDirectory: true)
-        let repository = try! StoreEnvironment.makeRepository(baseDirectory: base)
-        let connectionClient = NotionConnectionClient(baseURL: URL(string: "http://192.168.0.23:8787")!)
+        guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared") else {
+            fatalError("App Group container 'group.com.yona.kuri.shared' is not configured. Check Signing & Capabilities.")
+        }
+        let base = groupURL.appendingPathComponent("Kuri", isDirectory: true)
+        let repository: SQLiteCaptureRepository
+        do {
+            repository = try StoreEnvironment.makeRepository(baseDirectory: base)
+        } catch {
+            fatalError("Failed to initialize database: \(error.localizedDescription)")
+        }
+        let backendURL: URL
+        if let envURL = ProcessInfo.processInfo.environment["KURI_BACKEND_URL"],
+           let parsed = URL(string: envURL) {
+            backendURL = parsed
+        } else {
+            #if DEBUG
+            backendURL = URL(string: "http://localhost:8787")!
+            #else
+            backendURL = URL(string: "https://kuri-backend.yona-eo-dev.workers.dev")!
+            #endif
+        }
+        let connectionClient = NotionConnectionClient(baseURL: backendURL)
         let client = URLSessionCaptureSyncClient(baseURL: connectionClient.baseURL) { [weak repository] in
             guard let repository else { return nil }
             return try? repository.string(for: .sessionToken)
@@ -70,6 +99,13 @@ final class AppModel: ObservableObject {
         workspaceName = snapshot?.workspaceName
         databaseID = snapshot?.databaseID
         lastSyncAt = snapshot?.lastSyncAt
+
+        if let user = try? stateRepository.loadAuthUser() {
+            authState = .signedIn(user)
+        } else {
+            authState = .signedOut
+        }
+
         reload()
     }
 
@@ -148,8 +184,19 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func shouldThrottleSync() -> Bool {
+        guard let last = lastSyncTriggeredAt else { return false }
+        return Date().timeIntervalSince(last) < 30
+    }
+
     func triggerForegroundSync() async {
+        guard !shouldThrottleSync() else { return }
+        lastSyncTriggeredAt = .now
         loadState()
+        guard isSignedIn else {
+            bannerMessage = "로그인 후 동기화할 수 있어요."
+            return
+        }
         let snapshot = try? stateRepository.snapshot()
         guard snapshot?.sessionToken != nil, snapshot?.databaseID != nil else {
             bannerMessage = connectionState == .connected ? "동기화 설정을 다시 확인해 주세요." : "Notion 연결 후 동기화돼요."
@@ -164,6 +211,38 @@ final class AppModel: ObservableObject {
         await telemetry.flush()
     }
 
+    func signIn(user: AuthUser, sessionToken: String) {
+        try? stateRepository.saveAuthUser(user)
+        try? stateRepository.setString(sessionToken, for: .sessionToken)
+        authState = .signedIn(user)
+        bannerMessage = "로그인했어요."
+    }
+
+    func signOut() {
+        try? stateRepository.clearAuthUser()
+        authState = .signedOut
+        disconnectNotion()
+        bannerMessage = "로그아웃했어요."
+    }
+
+    var isSignedIn: Bool {
+        if case .signedIn = authState { return true }
+        return false
+    }
+
+    func checkAppleCredentialState() async {
+        guard case .signedIn(let user) = authState else { return }
+        let provider = ASAuthorizationAppleIDProvider()
+        do {
+            let state = try await provider.credentialState(forUserID: user.appleUserId)
+            if state == .revoked || state == .notFound {
+                signOut()
+            }
+        } catch {
+            // Best-effort check; don't sign out on network errors
+        }
+    }
+
     func disconnectNotion() {
         try? stateRepository.setString(nil, for: .sessionToken)
         try? stateRepository.setString(nil, for: .databaseID)
@@ -173,6 +252,61 @@ final class AppModel: ObservableObject {
         workspaceName = nil
         databaseID = nil
         bannerMessage = "Notion 연결이 해제됐어요."
+    }
+
+    func loadTags() {
+        do {
+            allTags = try repository.allTags()
+        } catch {
+            bannerMessage = "태그를 불러올 수 없습니다"
+        }
+    }
+
+    func renameTag(_ oldName: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, trimmed.count <= 100 else {
+            bannerMessage = "유효한 태그 이름을 입력해 주세요"
+            return
+        }
+        do {
+            try repository.renameTag(oldName, to: newName)
+            loadTags()
+            reload()
+        } catch {
+            print("[AppModel] renameTag failed: \(error)")
+            bannerMessage = "태그 이름을 변경할 수 없습니다"
+        }
+    }
+
+    func deleteTag(_ name: String) {
+        do {
+            try repository.deleteTag(name)
+            loadTags()
+            reload()
+        } catch {
+            print("[AppModel] deleteTag failed: \(error)")
+            bannerMessage = "태그를 삭제할 수 없습니다"
+        }
+    }
+
+    func mergeTags(sources: [String], into target: String) {
+        let normalizedTarget = target.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !normalizedTarget.isEmpty, normalizedTarget.count <= 100 else {
+            bannerMessage = "유효한 태그 이름을 입력해 주세요"
+            return
+        }
+        do {
+            for source in sources {
+                let normalizedSource = source.trimmingCharacters(in: .whitespaces).lowercased()
+                guard normalizedSource != normalizedTarget else { continue }
+                try repository.mergeTags(source: source, into: target)
+            }
+            loadTags()
+            reload()
+        } catch {
+            print("[AppModel] mergeTags failed: \(error)")
+            bannerMessage = "태그를 병합할 수 없습니다"
+        }
     }
 
     func deleteItem(_ item: CaptureItem) {
@@ -234,6 +368,16 @@ final class AppSyncScheduler: SyncScheduler {
             try BGTaskScheduler.shared.submit(request)
         } catch {
             // Best-effort scheduling; sync will retry on next foreground
+        }
+    }
+
+    func scheduleNextRefresh() {
+        let request = BGAppRefreshTaskRequest(identifier: Self.syncTaskIdentifier)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
+        do {
+            try BGTaskScheduler.shared.submit(request)
+        } catch {
+            // Best-effort; sync will run on next foreground
         }
     }
 }

@@ -50,8 +50,14 @@ final class ShareViewController: UIViewController {
 
     private lazy var performanceMonitor = PerformanceMonitor()
     private lazy var repository: SQLiteCaptureRepository = {
-        let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared")!
-        return try! StoreEnvironment.makeRepository(baseDirectory: root)
+        guard let root = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yona.kuri.shared") else {
+            fatalError("App Group container 'group.com.yona.kuri.shared' is not configured. Check Signing & Capabilities.")
+        }
+        do {
+            return try StoreEnvironment.makeRepository(baseDirectory: root)
+        } catch {
+            fatalError("Failed to initialize database: \(error.localizedDescription)")
+        }
     }()
 
     override func viewDidLoad() {
@@ -302,19 +308,28 @@ final class ShareViewController: UIViewController {
         actionContainer.layer.borderWidth = KuriTheme.borderWidth
         actionContainer.layer.borderColor = KuriTheme.borderSubtle.cgColor
 
-        saveButton.setTitle("SAVE", for: .normal)
-        saveButton.setImage(UIImage(systemName: "arrow.right"), for: .normal)
-        saveButton.semanticContentAttribute = .forceRightToLeft
-        saveButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: -16)
-        saveButton.tintColor = KuriTheme.surfacePrimary
-        saveButton.titleLabel?.font = KuriTypography.button
-        saveButton.setTitleColor(KuriTheme.surfacePrimary, for: .normal)
-        saveButton.backgroundColor = KuriTheme.inkPrimary
-        saveButton.contentEdgeInsets = UIEdgeInsets(top: 0, left: 24, bottom: 0, right: 24)
-        saveButton.layer.borderWidth = KuriTheme.borderWidth
-        saveButton.layer.borderColor = KuriTheme.inkPrimary.cgColor
+        var saveConfig = UIButton.Configuration.filled()
+        saveConfig.title = "SAVE"
+        saveConfig.image = UIImage(systemName: "arrow.right")
+        saveConfig.imagePlacement = .trailing
+        saveConfig.imagePadding = 16
+        saveConfig.baseBackgroundColor = KuriTheme.inkPrimary
+        saveConfig.baseForegroundColor = KuriTheme.surfacePrimary
+        saveConfig.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 24, bottom: 0, trailing: 24)
+        saveConfig.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = KuriTypography.button
+            return outgoing
+        }
+        saveConfig.background.strokeColor = KuriTheme.inkPrimary
+        saveConfig.background.strokeWidth = KuriTheme.borderWidth
+        saveButton.configuration = saveConfig
         saveButton.configurationUpdateHandler = { button in
-            button.backgroundColor = button.isEnabled ? KuriTheme.inkPrimary.withAlphaComponent(button.isHighlighted ? 0.88 : 1) : KuriTheme.inkPrimary.withAlphaComponent(0.45)
+            var config = button.configuration ?? UIButton.Configuration.filled()
+            config.baseBackgroundColor = KuriTheme.inkPrimary.withAlphaComponent(
+                button.isEnabled ? (button.isHighlighted ? 0.88 : 1) : 0.45
+            )
+            button.configuration = config
         }
 
         errorLabel.font = KuriTypography.caption
@@ -536,6 +551,9 @@ final class ShareViewController: UIViewController {
                 )
                 _ = try repository.save(draft)
                 _ = span.end()
+                // Notify main app of new capture
+                let center = CFNotificationCenterGetDarwinNotifyCenter()
+                CFNotificationCenterPostNotification(center, CFNotificationName("com.yona.kuri.newCapture" as CFString), nil, nil, true)
                 let uiSpan = performanceMonitor.begin(.saveTapToSuccessUI)
                 _ = uiSpan.end()
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
@@ -550,7 +568,7 @@ final class ShareViewController: UIViewController {
         saveButton.isEnabled = !isSaving
         closeButton.isEnabled = !isSaving
         errorLabel.isHidden = true
-        saveButton.setTitle(isSaving ? "SAVING" : "SAVE", for: .normal)
+        saveButton.configuration?.title = isSaving ? "SAVING" : "SAVE"
     }
 
     private func showError(_ message: String) {

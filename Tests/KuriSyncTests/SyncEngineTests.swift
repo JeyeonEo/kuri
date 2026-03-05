@@ -140,6 +140,119 @@ import KuriStore
     #expect(scheduler.scheduled.isEmpty)
 }
 
+@Test func syncEngineMarksFailureWhenOCRThrows() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+    let created = try repository.save(
+        CaptureDraft(
+            sourceApp: .unknown,
+            sourceURL: nil,
+            sharedText: nil,
+            memo: "",
+            tags: [],
+            imagePayloads: [PendingImage(suggestedFilename: "fail.png", data: Data([0x01]))]
+        )
+    )
+
+    let scheduler = TestScheduler()
+    let engine = SyncEngine(
+        repository: repository,
+        client: TestClient(),
+        ocrProcessor: FailingTestOCR(),
+        scheduler: scheduler,
+        performanceMonitor: PerformanceMonitor(),
+        databaseIdProvider: { "db-1" }
+    )
+
+    await engine.sync(created)
+
+    let item = try repository.item(id: created.id)!
+    #expect(item.status == .failed)
+    #expect(item.retryCount == 1)
+    #expect(scheduler.scheduled.count == 1)
+}
+
+@Test func syncEngineStopsRetryAfterMaxAttempts() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+    let created = try repository.save(
+        CaptureDraft(
+            sourceApp: .threads,
+            sourceURL: URL(string: "https://threads.net/@kuri/post/max"),
+            sharedText: "Max retries",
+            memo: "",
+            tags: [],
+            imagePayloads: []
+        )
+    )
+
+    let scheduler = TestScheduler()
+    let client = FailingTestClient(error: SyncError(code: "http_500", message: "Server error", isRetryable: true))
+    let engine = SyncEngine(
+        repository: repository,
+        client: client,
+        ocrProcessor: TestOCR(),
+        scheduler: scheduler,
+        performanceMonitor: PerformanceMonitor(),
+        databaseIdProvider: { "db-1" }
+    )
+
+    // Simulate 4 consecutive failures to exceed the retry limit (max 3)
+    for _ in 0..<4 {
+        let current = try repository.item(id: created.id)!
+        await engine.sync(current)
+    }
+
+    let item = try repository.item(id: created.id)!
+    #expect(item.status == .failed)
+    #expect(item.retryCount == 4)
+    // After 3 retries scheduled (at counts 1,2,3), the 4th should not be scheduled
+    #expect(scheduler.scheduled.count == 3)
+}
+
+@Test func syncEngineDeletesLocalImageAfterSuccessfulSync() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+    let created = try repository.save(
+        CaptureDraft(
+            sourceApp: .unknown,
+            sourceURL: nil,
+            sharedText: nil,
+            memo: "",
+            tags: [],
+            imagePayloads: [PendingImage(suggestedFilename: "cleanup-test.png", data: Data([0x89, 0x50, 0x4E, 0x47]))]
+        )
+    )
+
+    // Verify the image file was created
+    let item = try repository.item(id: created.id)!
+    let imagePath = item.imageLocalPath!
+    #expect(FileManager.default.fileExists(atPath: imagePath))
+
+    let engine = SyncEngine(
+        repository: repository,
+        client: TestClient(),
+        ocrProcessor: TestOCR(),
+        scheduler: TestScheduler(),
+        performanceMonitor: PerformanceMonitor(),
+        databaseIdProvider: { "db-1" }
+    )
+
+    await engine.sync(item)
+
+    // Image should be deleted after successful sync
+    #expect(!FileManager.default.fileExists(atPath: imagePath))
+}
+
+private struct FailingTestOCR: OCRProcessor {
+    func processImage(at path: String) async throws -> String {
+        throw SyncError(code: "ocr_failed", message: "OCR processing failed", isRetryable: true)
+    }
+}
+
 private final class FailingTestClient: @unchecked Sendable, CaptureSyncClient {
     let error: SyncError
 
