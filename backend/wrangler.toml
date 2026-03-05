@@ -1,0 +1,10 @@
+name = "kuri-backend"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV namespace — create with: npx wrangler kv namespace create KURI_STATE
+# Then paste the ID below
+# [[kv_namespaces]]
+# binding = "KURI_STATE"
+# id = "<PASTE_KV_NAMESPACE_ID_HERE>"
