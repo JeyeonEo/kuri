@@ -10,6 +10,7 @@ public protocol CaptureRepository: Sendable {
     func pendingItems(limit: Int) throws -> [CaptureItem]
     func recentItems(limit: Int) throws -> [CaptureItem]
     func recentTags(limit: Int) throws -> [RecentTag]
+    func allTags() throws -> [RecentTag]
     func markSyncing(id: UUID) throws
     func markSynced(id: UUID, notionPageID: String, syncedAt: Date) throws
     func markFailed(id: UUID, error: SyncError, nextRetryAt: Date?) throws
@@ -22,6 +23,9 @@ public protocol AppStateRepository: Sendable {
     func string(for key: AppStateKey) throws -> String?
     func setString(_ value: String?, for key: AppStateKey) throws
     func snapshot() throws -> AppStateSnapshot
+    func saveAuthUser(_ user: AuthUser) throws
+    func loadAuthUser() throws -> AuthUser?
+    func clearAuthUser() throws
 }
 
 public enum AppStateKey: String, Sendable {
@@ -31,6 +35,10 @@ public enum AppStateKey: String, Sendable {
     case workspaceName = "workspace_name"
     case connectionStatus = "connection_status"
     case lastSyncAt = "last_sync_at"
+    case authUserId = "auth_user_id"
+    case authAppleUserId = "auth_apple_user_id"
+    case authDisplayName = "auth_display_name"
+    case authEmail = "auth_email"
 }
 
 public enum ConnectionStatus: String, Codable, Sendable {
@@ -225,6 +233,28 @@ public final class SQLiteCaptureRepository: @unchecked Sendable, CaptureReposito
         return results
     }
 
+    public func allTags() throws -> [RecentTag] {
+        let query = """
+        SELECT name, last_used_at, use_count
+        FROM recent_tags
+        ORDER BY use_count DESC, name ASC
+        """
+        let stmt = try prepare(query)
+        defer { sqlite3_finalize(stmt) }
+
+        var results: [RecentTag] = []
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            results.append(
+                RecentTag(
+                    name: String(cString: sqlite3_column_text(stmt, 0)),
+                    lastUsedAt: try date(at: 1, stmt: stmt),
+                    useCount: Int(sqlite3_column_int(stmt, 2))
+                )
+            )
+        }
+        return results
+    }
+
     public func markSyncing(id: UUID) throws {
         try updateStatus(id: id, status: .syncing, error: nil, nextRetryAt: nil, incrementRetryCount: false)
     }
@@ -367,6 +397,33 @@ public final class SQLiteCaptureRepository: @unchecked Sendable, CaptureReposito
             connectionStatus: connectionStatus,
             lastSyncAt: lastSyncAt
         )
+    }
+
+    public func saveAuthUser(_ user: AuthUser) throws {
+        try setString(user.userId, for: .authUserId)
+        try setString(user.appleUserId, for: .authAppleUserId)
+        try setString(user.displayName, for: .authDisplayName)
+        try setString(user.email, for: .authEmail)
+    }
+
+    public func loadAuthUser() throws -> AuthUser? {
+        guard let userId = try string(for: .authUserId),
+              let appleUserId = try string(for: .authAppleUserId) else {
+            return nil
+        }
+        return AuthUser(
+            userId: userId,
+            appleUserId: appleUserId,
+            displayName: try string(for: .authDisplayName),
+            email: try string(for: .authEmail)
+        )
+    }
+
+    public func clearAuthUser() throws {
+        try setString(nil, for: .authUserId)
+        try setString(nil, for: .authAppleUserId)
+        try setString(nil, for: .authDisplayName)
+        try setString(nil, for: .authEmail)
     }
 
     private func updateStatus(

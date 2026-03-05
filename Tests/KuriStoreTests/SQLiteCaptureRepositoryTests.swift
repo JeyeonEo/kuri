@@ -256,6 +256,52 @@ import KuriCore
     #expect(pending.isEmpty)
 }
 
+@Test func saveAndLoadAuthUserRoundTrips() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    // Initially no auth user
+    #expect(try repository.loadAuthUser() == nil)
+
+    let user = AuthUser(
+        userId: "user_123",
+        appleUserId: "001234.abcdef",
+        displayName: "Test User",
+        email: "test@privaterelay.appleid.com"
+    )
+    try repository.saveAuthUser(user)
+
+    let loaded = try repository.loadAuthUser()
+    #expect(loaded?.userId == "user_123")
+    #expect(loaded?.appleUserId == "001234.abcdef")
+    #expect(loaded?.displayName == "Test User")
+    #expect(loaded?.email == "test@privaterelay.appleid.com")
+
+    // Clear auth user
+    try repository.clearAuthUser()
+    #expect(try repository.loadAuthUser() == nil)
+}
+
+@Test func allTagsReturnsAllTagsSortedByUseCount() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "A", memo: "", tags: ["swift"], imagePayloads: []))
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "B", memo: "", tags: ["swift", "ios"], imagePayloads: []))
+    _ = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "C", memo: "", tags: ["swift", "ios", "ai"], imagePayloads: []))
+
+    let tags = try repository.allTags()
+    #expect(tags.count == 3)
+    #expect(tags[0].name == "swift")
+    #expect(tags[0].useCount == 3)
+    #expect(tags[1].name == "ios")
+    #expect(tags[1].useCount == 2)
+    #expect(tags[2].name == "ai")
+    #expect(tags[2].useCount == 1)
+}
+
 @Test func deleteItemRemovesCaptureAndImage() throws {
     let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
