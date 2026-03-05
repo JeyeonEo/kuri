@@ -551,6 +551,9 @@ final class ShareViewController: UIViewController {
                 )
                 _ = try repository.save(draft)
                 _ = span.end()
+                // Notify main app of new capture
+                let center = CFNotificationCenterGetDarwinNotifyCenter()
+                CFNotificationCenterPostNotification(center, CFNotificationName("com.yona.kuri.newCapture" as CFString), nil, nil, true)
                 let uiSpan = performanceMonitor.begin(.saveTapToSuccessUI)
                 _ = uiSpan.end()
                 extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
