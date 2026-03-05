@@ -73,6 +73,11 @@ public final class SyncEngine: Sendable {
             let result = try await client.sync(item: hydrated, databaseId: databaseId)
             _ = span.end()
             try repository.markSynced(id: hydrated.id, notionPageID: result.notionPageID, syncedAt: .now)
+
+            // Clean up local image after successful sync
+            if let imagePath = hydrated.imageLocalPath {
+                try? FileManager.default.removeItem(atPath: imagePath)
+            }
         } catch let error as SyncError {
             try? await handleFailure(for: item, error: error)
         } catch {

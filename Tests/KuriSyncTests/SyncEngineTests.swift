@@ -212,6 +212,41 @@ import KuriStore
     #expect(scheduler.scheduled.count == 3)
 }
 
+@Test func syncEngineDeletesLocalImageAfterSuccessfulSync() async throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+    let created = try repository.save(
+        CaptureDraft(
+            sourceApp: .unknown,
+            sourceURL: nil,
+            sharedText: nil,
+            memo: "",
+            tags: [],
+            imagePayloads: [PendingImage(suggestedFilename: "cleanup-test.png", data: Data([0x89, 0x50, 0x4E, 0x47]))]
+        )
+    )
+
+    // Verify the image file was created
+    let item = try repository.item(id: created.id)!
+    let imagePath = item.imageLocalPath!
+    #expect(FileManager.default.fileExists(atPath: imagePath))
+
+    let engine = SyncEngine(
+        repository: repository,
+        client: TestClient(),
+        ocrProcessor: TestOCR(),
+        scheduler: TestScheduler(),
+        performanceMonitor: PerformanceMonitor(),
+        databaseIdProvider: { "db-1" }
+    )
+
+    await engine.sync(item)
+
+    // Image should be deleted after successful sync
+    #expect(!FileManager.default.fileExists(atPath: imagePath))
+}
+
 private struct FailingTestOCR: OCRProcessor {
     func processImage(at path: String) async throws -> String {
         throw SyncError(code: "ocr_failed", message: "OCR processing failed", isRetryable: true)
