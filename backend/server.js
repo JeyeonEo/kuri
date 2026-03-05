@@ -1,339 +1,111 @@
 import http from "node:http";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { NotionClient } from "./notion.js";
-import { verifyAppleIdentityToken } from "./apple-auth.js";
-
-const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-const stateLocks = new Map();
-
-function withStateLock(stateFile, fn) {
-  const pending = stateLocks.get(stateFile) || Promise.resolve();
-  const next = pending.then(fn, () => fn());
-  stateLocks.set(stateFile, next);
-  return next;
-}
+import { createWorkerHandler, createMemoryStore } from "./handler.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultDataDir = path.join(__dirname, "data");
 const defaultStateFile = path.join(defaultDataDir, "state.json");
 
-function ensureState(stateFile) {
-  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
-  if (!fs.existsSync(stateFile)) {
-    fs.writeFileSync(
-      stateFile,
-      JSON.stringify({ captures: {}, workspaces: {}, sessions: {}, oauthStarts: {}, users: {} }, null, 2),
-      "utf8"
-    );
+function createFileStore(stateFile) {
+  let lock = Promise.resolve();
+
+  function ensureState() {
+    fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+    if (!fs.existsSync(stateFile)) {
+      fs.writeFileSync(
+        stateFile,
+        JSON.stringify({ captures: {}, workspaces: {}, sessions: {}, oauthStarts: {}, users: {} }, null, 2),
+        "utf8"
+      );
+    }
+    const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+    return {
+      captures: parsed.captures || {},
+      workspaces: parsed.workspaces || {},
+      sessions: parsed.sessions || {},
+      oauthStarts: parsed.oauthStarts || {},
+      users: parsed.users || {}
+    };
   }
-  const parsed = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+
   return {
-    captures: parsed.captures || {},
-    workspaces: parsed.workspaces || {},
-    sessions: parsed.sessions || {},
-    oauthStarts: parsed.oauthStarts || {},
-    users: parsed.users || {}
+    async withLock(fn) {
+      const next = lock.then(fn, () => fn());
+      lock = next.catch(() => {});
+      return next;
+    },
+    getState() {
+      return ensureState();
+    },
+    saveState(state) {
+      fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), "utf8");
+    }
   };
 }
 
-function saveState(stateFile, state) {
-  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2), "utf8");
-}
-
-function json(res, status, body) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
-
-function redirect(res, location) {
-  res.writeHead(302, { Location: location });
-  res.end();
-}
-
-function bearerToken(req) {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith("Bearer ")) {
-    return null;
-  }
-  return header.slice("Bearer ".length);
-}
-
-function validSession(state, token) {
-  if (!token) return null;
-  const session = state.sessions[token];
-  if (!session) return null;
-  const age = Date.now() - new Date(session.createdAt).getTime();
-  if (age > SESSION_TTL_MS) {
-    delete state.sessions[token];
-    return null;
-  }
-  return session;
-}
-
-export function createHandler(options = {}) {
-  const stateFile = options.stateFile ?? defaultStateFile;
-  return async function handler(req, res) {
-    return withStateLock(stateFile, async () => {
-    const url = new URL(req.url, "http://localhost");
-    const state = ensureState(stateFile);
-
-    try {
-    if (req.method === "POST" && url.pathname === "/v1/auth/apple") {
-      const body = await readJSON(req);
-      if (!body.identityToken || !body.installationId) {
-        return json(res, 400, { error: "missing_fields" });
-      }
-      const bundleId = process.env.APPLE_BUNDLE_ID || "com.kuri.app";
-      let appleUser;
-      try {
-        appleUser = await verifyAppleIdentityToken(body.identityToken, bundleId);
-      } catch (err) {
-        return json(res, 401, { error: "invalid_identity_token", message: err.message });
-      }
-
-      // Find or create user by Apple sub
-      let userId = null;
-      for (const [id, user] of Object.entries(state.users)) {
-        if (user.appleUserId === appleUser.sub) {
-          userId = id;
-          break;
-        }
-      }
-      if (!userId) {
-        userId = `user_${crypto.randomUUID()}`;
-        state.users[userId] = {
-          appleUserId: appleUser.sub,
-          email: appleUser.email,
-          createdAt: new Date().toISOString()
-        };
-      }
-
-      // Migrate existing installation workspace to user if not already claimed
-      const installationId = body.installationId;
-      const existingWorkspace = state.workspaces[installationId];
-      if (existingWorkspace && !existingWorkspace.userId) {
-        existingWorkspace.userId = userId;
-      }
-
-      // Issue user-scoped session
-      const sessionToken = `session_${crypto.randomUUID()}`;
-      state.sessions[sessionToken] = {
-        installationId,
-        userId,
-        createdAt: new Date().toISOString()
-      };
-      saveState(stateFile, state);
-
-      return json(res, 200, {
-        sessionToken,
-        userId,
-        email: appleUser.email
-      });
-    }
-
-    if (req.method === "POST" && url.pathname === "/v1/oauth/notion/start") {
-      const body = await readJSON(req);
-      const installationId = body.installationId || crypto.randomUUID();
-      const oauthState = `oauth_${crypto.randomUUID()}`;
-      state.oauthStarts[oauthState] = {
-        installationId,
-        createdAt: new Date().toISOString()
-      };
-      saveState(stateFile, state);
-      if (process.env.NOTION_MODE === "live") {
-        const clientId = process.env.NOTION_CLIENT_ID;
-        const redirectUri = process.env.NOTION_REDIRECT_URI || "http://localhost:8787/v1/oauth/notion/callback";
-        const authorizeUrl = `https://api.notion.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&owner=user&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(oauthState)}`;
-        return json(res, 200, { authorizeUrl });
-      }
-      return json(res, 200, {
-        authorizeUrl: `http://localhost:8787/v1/oauth/notion/callback?state=${encodeURIComponent(oauthState)}`
-      });
-    }
-
-    if (req.method === "GET" && url.pathname === "/v1/oauth/notion/callback") {
-      const oauthState = url.searchParams.get("state");
-      if (!oauthState) {
-        return redirect(res, "kuri://oauth/notion?status=failed&reason=missing_state");
-      }
-      const start = state.oauthStarts[oauthState];
-      if (!start?.installationId) {
-        return redirect(res, "kuri://oauth/notion?status=failed&reason=invalid_state");
-      }
-      const stateAge = Date.now() - new Date(start.createdAt).getTime();
-      if (stateAge > OAUTH_STATE_TTL_MS) {
-        delete state.oauthStarts[oauthState];
-        saveState(stateFile, state);
-        return redirect(res, "kuri://oauth/notion?status=failed&reason=expired_state");
-      }
-      const installationId = start.installationId;
-      delete state.oauthStarts[oauthState];
-
-      const sessionToken = `session_${crypto.randomUUID()}`;
-      let workspace;
-      if (process.env.NOTION_MODE === "live") {
-        const code = url.searchParams.get("code");
-        if (!code) {
-          return redirect(res, "kuri://oauth/notion?status=failed&reason=missing_code");
-        }
-        const notion = new NotionClient(null);
-        const redirectUri = process.env.NOTION_REDIRECT_URI || "http://localhost:8787/v1/oauth/notion/callback";
-        const tokenResponse = await notion.exchangeOAuthCode(
-          code,
-          process.env.NOTION_CLIENT_ID,
-          process.env.NOTION_CLIENT_SECRET,
-          redirectUri
-        );
-        workspace = state.workspaces[installationId] || {};
-        workspace.notionAccessToken = tokenResponse.access_token;
-        workspace.workspaceName = tokenResponse.workspace_name || "KURI Workspace";
-        workspace.connectionStatus = "connected";
-      } else {
-        workspace = state.workspaces[installationId] || {
-          databaseId: `db_${crypto.randomUUID()}`,
-          workspaceName: "KURI Workspace",
-          connectionStatus: "connected"
-        };
-      }
-      state.workspaces[installationId] = workspace;
-      state.sessions[sessionToken] = {
-        installationId,
-        createdAt: new Date().toISOString()
-      };
-      saveState(stateFile, state);
-
-      const redirectURL = new URL("kuri://oauth/notion");
-      redirectURL.searchParams.set("status", "success");
-      redirectURL.searchParams.set("sessionToken", sessionToken);
-      redirectURL.searchParams.set("workspaceName", workspace.workspaceName);
-      redirectURL.searchParams.set("databaseId", workspace.databaseId);
-      return redirect(res, redirectURL.toString());
-    }
-
-    if (req.method === "POST" && url.pathname === "/v1/workspaces/bootstrap") {
-      const body = await readJSON(req);
-      const workspaceId = body.installationId || "default-installation";
-      const token = bearerToken(req);
-      const session = validSession(state, token);
-      if (!session || session.installationId !== workspaceId) {
-        saveState(stateFile, state);
-        return json(res, 401, { error: "unauthorized" });
-      }
-      if (!state.workspaces[workspaceId]) {
-        state.workspaces[workspaceId] = {
-          databaseId: `db_${crypto.randomUUID()}`,
-          workspaceName: "KURI Workspace",
-          connectionStatus: "connected"
-        };
-      }
-      const ws = state.workspaces[workspaceId];
-      if (process.env.NOTION_MODE === "live" && ws.notionAccessToken && !ws.realDatabaseCreated) {
-        const notion = new NotionClient(ws.notionAccessToken);
-        const dbId = await notion.createDatabase(ws.rootPageId);
-        ws.databaseId = dbId;
-        ws.realDatabaseCreated = true;
-      }
-      saveState(stateFile, state);
-      const { notionAccessToken: _, ...publicWs } = ws;
-      return json(res, 200, publicWs);
-    }
-
-    if (req.method === "POST" && url.pathname === "/v1/captures/sync") {
-      const body = await readJSON(req);
-      const token = bearerToken(req);
-      const session = validSession(state, token);
-      const workspace = session ? state.workspaces[session.installationId] : null;
-      if (!session || !workspace || workspace.databaseId !== body.databaseId) {
-        saveState(stateFile, state);
-        return json(res, 401, { error: "unauthorized" });
-      }
-      const key = body.clientItemId;
-      if (typeof key !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
-        return json(res, 400, { error: "invalid_client_item_id" });
-      }
-      if (state.captures[key]) {
-        return json(res, 200, {
-          result: "duplicate",
-          notionPageId: state.captures[key].notionPageId
-        });
-      }
-
-      let notionPageId;
-      if (process.env.NOTION_MODE === "live" && workspace.notionAccessToken) {
-        const notion = new NotionClient(workspace.notionAccessToken);
-        notionPageId = await notion.createPage(body.databaseId, {
-          title: body.title,
-          sourceUrl: body.sourceURL,
-          platform: body.platform,
-          tags: body.tags,
-          memo: body.memo,
-          text: body.text,
-          capturedAt: body.capturedAt
-        });
-      } else {
-        notionPageId = `page_${crypto.randomUUID()}`;
-      }
-      state.captures[key] = {
-        notionPageId,
-        databaseId: body.databaseId,
-        title: body.title,
-        url: body.sourceURL,
-        createdAt: body.capturedAt
-      };
-      saveState(stateFile, state);
-
-      return json(res, 200, {
-        result: "created",
-        notionPageId
-      });
-    }
-
-    if (req.method === "POST" && url.pathname === "/v1/telemetry/client-performance") {
-      const token = bearerToken(req);
-      const session = validSession(state, token);
-      if (!session) {
-        saveState(stateFile, state);
-        return json(res, 401, { error: "unauthorized" });
-      }
-      const body = await readJSON(req);
-      return json(res, 202, {
-        accepted: Array.isArray(body.samples) ? body.samples.length : 0
-      });
-    }
-
-    if (req.method === "GET" && url.pathname === "/v1/health") {
-      return json(res, 200, { status: "ok" });
-    }
-
-    return json(res, 404, { error: "not_found" });
-    } catch (err) {
-      if (err.statusCode === 413) {
-        return json(res, 413, { error: "payload_too_large" });
-      }
-      return json(res, 500, { error: "internal" });
-    }
-    });
-  };
-}
-
-const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
-
-async function readJSON(req) {
+async function collectBody(req) {
   const chunks = [];
   let totalBytes = 0;
   for await (const chunk of req) {
     totalBytes += chunk.length;
-    if (totalBytes > MAX_BODY_BYTES) {
+    if (totalBytes > 1024 * 1024) {
       throw Object.assign(new Error("payload_too_large"), { statusCode: 413 });
     }
     chunks.push(chunk);
   }
-  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
+  return chunks.length ? Buffer.concat(chunks) : null;
+}
+
+export function createHandler(options = {}) {
+  const stateFile = options.stateFile ?? defaultStateFile;
+  const env = {
+    NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,
+    NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET,
+    NOTION_REDIRECT_URI: process.env.NOTION_REDIRECT_URI,
+    NOTION_MODE: process.env.NOTION_MODE,
+    APPLE_BUNDLE_ID: process.env.APPLE_BUNDLE_ID,
+    ...options.env
+  };
+
+  const store = createFileStore(stateFile);
+  const workerHandler = createWorkerHandler(env, store);
+
+  return async function handler(req, res) {
+    try {
+      const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+      const bodyBuffer = req.method !== "GET" && req.method !== "HEAD"
+        ? await collectBody(req) : null;
+
+      const webRequest = new Request(url.toString(), {
+        method: req.method,
+        headers: req.headers,
+        body: bodyBuffer
+      });
+
+      const webResponse = await workerHandler(webRequest);
+
+      const headers = {};
+      webResponse.headers.forEach((value, key) => {
+        // Preserve header casing expected by consumers (e.g. Location, Content-Type)
+        if (key === "location") headers["Location"] = value;
+        else if (key === "content-type") headers["Content-Type"] = value;
+        else headers[key] = value;
+      });
+      res.writeHead(webResponse.status, headers);
+      const responseBody = await webResponse.text();
+      res.end(responseBody);
+    } catch (err) {
+      if (err.statusCode === 413) {
+        res.writeHead(413, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "payload_too_large" }));
+      } else {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "internal" }));
+      }
+    }
+  };
 }
 
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
