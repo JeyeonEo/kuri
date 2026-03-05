@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NotionClient } from "./notion.js";
+import { verifyAppleIdentityToken } from "./apple-auth.js";
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -26,7 +27,7 @@ function ensureState(stateFile) {
   if (!fs.existsSync(stateFile)) {
     fs.writeFileSync(
       stateFile,
-      JSON.stringify({ captures: {}, workspaces: {}, sessions: {}, oauthStarts: {} }, null, 2),
+      JSON.stringify({ captures: {}, workspaces: {}, sessions: {}, oauthStarts: {}, users: {} }, null, 2),
       "utf8"
     );
   }
@@ -35,7 +36,8 @@ function ensureState(stateFile) {
     captures: parsed.captures || {},
     workspaces: parsed.workspaces || {},
     sessions: parsed.sessions || {},
-    oauthStarts: parsed.oauthStarts || {}
+    oauthStarts: parsed.oauthStarts || {},
+    users: parsed.users || {}
   };
 }
 
@@ -81,6 +83,59 @@ export function createHandler(options = {}) {
     const state = ensureState(stateFile);
 
     try {
+    if (req.method === "POST" && url.pathname === "/v1/auth/apple") {
+      const body = await readJSON(req);
+      if (!body.identityToken || !body.installationId) {
+        return json(res, 400, { error: "missing_fields" });
+      }
+      const bundleId = process.env.APPLE_BUNDLE_ID || "com.kuri.app";
+      let appleUser;
+      try {
+        appleUser = await verifyAppleIdentityToken(body.identityToken, bundleId);
+      } catch (err) {
+        return json(res, 401, { error: "invalid_identity_token", message: err.message });
+      }
+
+      // Find or create user by Apple sub
+      let userId = null;
+      for (const [id, user] of Object.entries(state.users)) {
+        if (user.appleUserId === appleUser.sub) {
+          userId = id;
+          break;
+        }
+      }
+      if (!userId) {
+        userId = `user_${crypto.randomUUID()}`;
+        state.users[userId] = {
+          appleUserId: appleUser.sub,
+          email: appleUser.email,
+          createdAt: new Date().toISOString()
+        };
+      }
+
+      // Migrate existing installation workspace to user if not already claimed
+      const installationId = body.installationId;
+      const existingWorkspace = state.workspaces[installationId];
+      if (existingWorkspace && !existingWorkspace.userId) {
+        existingWorkspace.userId = userId;
+      }
+
+      // Issue user-scoped session
+      const sessionToken = `session_${crypto.randomUUID()}`;
+      state.sessions[sessionToken] = {
+        installationId,
+        userId,
+        createdAt: new Date().toISOString()
+      };
+      saveState(stateFile, state);
+
+      return json(res, 200, {
+        sessionToken,
+        userId,
+        email: appleUser.email
+      });
+    }
+
     if (req.method === "POST" && url.pathname === "/v1/oauth/notion/start") {
       const body = await readJSON(req);
       const installationId = body.installationId || crypto.randomUUID();
@@ -249,6 +304,10 @@ export function createHandler(options = {}) {
       return json(res, 202, {
         accepted: Array.isArray(body.samples) ? body.samples.length : 0
       });
+    }
+
+    if (req.method === "GET" && url.pathname === "/v1/health") {
+      return json(res, 200, { status: "ok" });
     }
 
     return json(res, 404, { error: "not_found" });

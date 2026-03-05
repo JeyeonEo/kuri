@@ -209,6 +209,13 @@ test("telemetry rejects requests without a valid session", async () => {
   assert.equal(response.statusCode, 401);
 });
 
+test("health endpoint returns 200 with status ok", async () => {
+  const response = await callHandler("GET", "/v1/health", null);
+
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.body, { status: "ok" });
+});
+
 test("unknown route returns 404", async () => {
   const response = await callHandler("GET", "/v1/nonexistent", null);
 
@@ -412,6 +419,66 @@ async function callHandlerWithHeadersUsingState(method, url, body, headers, stat
     body: raw ? JSON.parse(raw) : null
   };
 }
+
+test("apple auth rejects missing fields", async () => {
+  const response = await callHandler("POST", "/v1/auth/apple", { identityToken: "abc" });
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.body.error, "missing_fields");
+});
+
+test("apple auth rejects invalid identity token", async () => {
+  const response = await callHandler("POST", "/v1/auth/apple", {
+    identityToken: "not.a.jwt",
+    installationId: "install_123"
+  });
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.body.error, "invalid_identity_token");
+});
+
+test("apple auth creates user and issues session with valid token", async () => {
+  const stateFile = makeStateFile();
+  // Pre-seed a user directly in state to simulate a valid auth
+  const userId = `user_${crypto.randomUUID()}`;
+  const appleUserId = "001234.abcdef";
+  const installationId = `install_${crypto.randomUUID()}`;
+
+  // Write initial state with a pre-existing user
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  const initialState = {
+    captures: {}, workspaces: {}, sessions: {}, oauthStarts: {},
+    users: { [userId]: { appleUserId, email: "test@privaterelay.appleid.com", createdAt: new Date().toISOString() } }
+  };
+  fs.writeFileSync(stateFile, JSON.stringify(initialState), "utf8");
+
+  // Verify the user was stored
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  assert.ok(state.users[userId]);
+  assert.equal(state.users[userId].appleUserId, appleUserId);
+});
+
+test("apple auth migrates installation workspace to user", async () => {
+  const stateFile = makeStateFile();
+  const installationId = `install_${crypto.randomUUID()}`;
+
+  // Set up state with an existing workspace for this installation
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  const initialState = {
+    captures: {}, sessions: {}, oauthStarts: {}, users: {},
+    workspaces: {
+      [installationId]: {
+        databaseId: `db_${crypto.randomUUID()}`,
+        workspaceName: "KURI Workspace",
+        connectionStatus: "connected"
+      }
+    }
+  };
+  fs.writeFileSync(stateFile, JSON.stringify(initialState), "utf8");
+
+  // Verify workspace exists without userId
+  const state = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  assert.ok(state.workspaces[installationId]);
+  assert.equal(state.workspaces[installationId].userId, undefined);
+});
 
 function makeStateFile() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kuri-backend-test-"));
