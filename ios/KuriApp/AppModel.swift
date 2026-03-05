@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import SwiftUI
 import UIKit
@@ -5,6 +6,12 @@ import KuriCore
 import KuriStore
 import KuriSync
 import KuriObservability
+
+enum AuthState: Equatable {
+    case unknown
+    case signedOut
+    case signedIn(AuthUser)
+}
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -15,6 +22,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var databaseID: String?
     @Published private(set) var lastSyncAt: Date?
     @Published private(set) var isBootstrapping = false
+    @Published private(set) var authState: AuthState = .unknown
     @Published var bannerMessage: String?
 
     private let repository: SQLiteCaptureRepository
@@ -55,7 +63,7 @@ final class AppModel: ObservableObject {
             #if DEBUG
             backendURL = URL(string: "http://localhost:8787")!
             #else
-            backendURL = URL(string: "https://api.kuri.app")!
+            backendURL = URL(string: "https://kuri-backend.yona-eo-dev.workers.dev")!
             #endif
         }
         let connectionClient = NotionConnectionClient(baseURL: backendURL)
@@ -88,6 +96,13 @@ final class AppModel: ObservableObject {
         workspaceName = snapshot?.workspaceName
         databaseID = snapshot?.databaseID
         lastSyncAt = snapshot?.lastSyncAt
+
+        if let user = try? stateRepository.loadAuthUser() {
+            authState = .signedIn(user)
+        } else {
+            authState = .signedOut
+        }
+
         reload()
     }
 
@@ -168,6 +183,10 @@ final class AppModel: ObservableObject {
 
     func triggerForegroundSync() async {
         loadState()
+        guard isSignedIn else {
+            bannerMessage = "로그인 후 동기화할 수 있어요."
+            return
+        }
         let snapshot = try? stateRepository.snapshot()
         guard snapshot?.sessionToken != nil, snapshot?.databaseID != nil else {
             bannerMessage = connectionState == .connected ? "동기화 설정을 다시 확인해 주세요." : "Notion 연결 후 동기화돼요."
@@ -180,6 +199,38 @@ final class AppModel: ObservableObject {
         reload()
         bannerMessage = failedItems.isEmpty ? "최근 항목이 Notion과 동기화됐어요." : "일부 항목은 잠시 후 다시 동기화돼요."
         await telemetry.flush()
+    }
+
+    func signIn(user: AuthUser, sessionToken: String) {
+        try? stateRepository.saveAuthUser(user)
+        try? stateRepository.setString(sessionToken, for: .sessionToken)
+        authState = .signedIn(user)
+        bannerMessage = "로그인했어요."
+    }
+
+    func signOut() {
+        try? stateRepository.clearAuthUser()
+        authState = .signedOut
+        disconnectNotion()
+        bannerMessage = "로그아웃했어요."
+    }
+
+    var isSignedIn: Bool {
+        if case .signedIn = authState { return true }
+        return false
+    }
+
+    func checkAppleCredentialState() async {
+        guard case .signedIn(let user) = authState else { return }
+        let provider = ASAuthorizationAppleIDProvider()
+        do {
+            let state = try await provider.credentialState(forUserID: user.appleUserId)
+            if state == .revoked || state == .notFound {
+                signOut()
+            }
+        } catch {
+            // Best-effort check; don't sign out on network errors
+        }
     }
 
     func disconnectNotion() {
