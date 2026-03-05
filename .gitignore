@@ -40,3 +40,8 @@ DerivedData/
 *.key
 *.p12
 *.mobileprovision
+
+# Build archives
+build/
+*.xcarchive
+.wrangler/
