@@ -96,6 +96,7 @@ flowchart LR
 - 플랫폼 감지
 - 이미지 저장 및 OCR 실행 시도
 - 로컬 Outbox 적재
+- Darwin notification 전송 (`com.yona.kuri.newCapture`) → Main app이 즉시 sync
 
 제약:
 
@@ -126,11 +127,11 @@ Main app 내부의 동기화 워커다.
 트리거:
 
 - 앱 실행 직후
-- 앱 foreground 진입 시
-- 네트워크 복구 감지 시
+- 앱 foreground 진입 시 (scenePhase `.active`, 30초 throttle)
+- Darwin notification 수신 시 (Share Extension 저장 후)
 - Notion 연결 완료 직후
-- 사용자의 수동 재시도
-- Background App Refresh / BGProcessingTask 가능 시
+- 사용자의 수동 재시도 (pull-to-refresh)
+- BGAppRefreshTaskRequest (15분 주기 자동 스케줄)
 
 역할:
 
@@ -139,6 +140,7 @@ Main app 내부의 동기화 워커다.
 - 백엔드 API 호출
 - 성공/실패 상태 반영
 - 다음 재시도 시각 계산
+- 동기화 성공 후 로컬 이미지 삭제 (best-effort)
 
 ### 6.5 Backend
 

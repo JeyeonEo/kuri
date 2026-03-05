@@ -44,7 +44,9 @@
 | Notion 연동 (OAuth) | 완료 | NotionConnectionClient |
 | 태그 관리 UI | 완료 | TagManagementView — rename/delete/merge |
 | 설정 화면 | 완료 | SettingsView |
-| 백그라운드 동기화 | 완료 | BGAppRefreshTaskRequest |
+| 백그라운드 동기화 | 완료 | BGAppRefreshTaskRequest, 15분 주기, scenePhase 복귀 sync |
+| Darwin notification | 완료 | Share Extension → App 즉시 sync (com.yona.kuri.newCapture) |
+| 이미지 정리 | 완료 | 동기화 성공 후 로컬 이미지 삭제 |
 | Apple Sign-In | 완료 | AuthClient + SignInView |
 | 텔레메트리 | 완료 | TelemetryUploader |
 
@@ -79,6 +81,14 @@
 - 입력 검증 강화 (clientItemId UUID 형식)
 - UIButton.Configuration 마이그레이션
 
+## 백그라운드 동기화 완성 (2026-03-05 완료)
+
+- BGTaskScheduler Info.plist 등록 (`com.yona.kuri.app.sync`)
+- scenePhase foreground return sync (30초 throttle)
+- 15분 주기 background refresh (BGAppRefreshTaskRequest)
+- Darwin notification: Share Extension 저장 → App 즉시 sync
+- 동기화 성공 후 로컬 이미지 자동 삭제
+
 ## 배포 인프라 (2026-03-05 완료)
 
 - Backend: Cloudflare Workers
@@ -98,3 +108,5 @@
 | `docs/plans/2026-03-05-tag-management-design.md` | 03-05 | 태그 관리 설계 |
 | `docs/plans/2026-03-05-tag-management-plan.md` | 03-05 | 태그 관리 TDD 계획 |
 | `docs/plans/2026-03-05-milestone1-notion-live-mode.md` | 03-05 | Notion Live 모드 검증 계획 |
+| `docs/plans/2026-03-05-background-sync-completion-design.md` | 03-05 | 백그라운드 동기화 완성 설계 |
+| `docs/plans/2026-03-05-background-sync-completion.md` | 03-05 | 백그라운드 동기화 구현 계획 |

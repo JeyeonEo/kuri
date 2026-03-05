@@ -5,20 +5,37 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Test Commands
 
 ```bash
-# Swift package tests (all modules)
-SWIFTPM_MODULECACHE_OVERRIDE=.build/module-cache swift test
+# Unified test runner (PREFERRED — use this in plans)
+scripts/run-tests.sh              # Run all: SPM + backend + Xcode build
+scripts/run-tests.sh --changed    # Smart mode: only test affected modules
+scripts/run-tests.sh --spm        # SPM unit tests only
+scripts/run-tests.sh --backend    # Backend tests only
+scripts/run-tests.sh --xcode      # Xcode build verification only
 
-# Run a single test target
+# Individual commands (for debugging specific failures)
+SWIFTPM_MODULECACHE_OVERRIDE=.build/module-cache swift test
 swift test --filter KuriCoreTests
 swift test --filter KuriStoreTests
 swift test --filter KuriSyncTests
-
-# Backend tests
 cd backend && npm test
-
-# Generate Xcode project (requires xcodegen)
 cd ios && xcodegen generate
 ```
+
+## Test Routine (REQUIRED for all implementation plans)
+
+**Every implementation plan MUST include test verification steps.** When writing plans or executing tasks:
+
+1. **Before starting:** Run `scripts/run-tests.sh` to establish a green baseline
+2. **After each logical step:** Run `scripts/run-tests.sh --changed` to catch regressions early
+3. **Before completion:** Run `scripts/run-tests.sh` (full suite) to verify nothing is broken
+
+**Module dependency cascade** — the script handles this automatically:
+- KuriCore changes → also test KuriStore, KuriSync
+- KuriStore changes → also test KuriSync
+- backend/ changes → backend tests
+- ios/ changes → Xcode build check
+
+**Planning agents:** When creating implementation plans, include `scripts/run-tests.sh --changed` after each step and `scripts/run-tests.sh` as the final verification step. Never mark a plan as complete without a passing full test run.
 
 ## Architecture
 
@@ -50,9 +67,18 @@ Zero-dependency Node.js server (`server.js`, port 8787). Endpoints: OAuth start/
 
 ### Data Flow
 
-1. Share Extension extracts content → user adds tags/memo → `CaptureDraft` saved to SQLite
+1. Share Extension extracts content → user adds tags/memo → `CaptureDraft` saved to SQLite → Darwin notification (`com.yona.kuri.newCapture`) posted
 2. Images stored in App Group directory; OCR marked pending if image present
-3. `SyncEngine.runPendingSync()` fetches pending items → runs OCR if needed → recalculates title → POSTs to backend → marks synced with `notionPageId`
+3. `SyncEngine.runPendingSync()` fetches pending items → runs OCR if needed → recalculates title → POSTs to backend → marks synced with `notionPageId` → deletes local image file
+
+### Sync Triggers
+
+- **App launch** — initial sync + schedules 15-min BGAppRefreshTaskRequest
+- **Foreground return** — `scenePhase` `.active` detection (30s throttle)
+- **Share Extension save** — Darwin notification triggers immediate foreground sync
+- **Background refresh** — BGTaskScheduler fires every ~15 min, re-schedules after each run
+- **Pull-to-refresh** — manual trigger in ContentView
+- **Retry schedule** — `AppSyncScheduler.scheduleRetry()` for failed items (15s → 2m → 15m)
 
 ## API Guidelines
 
@@ -68,3 +94,50 @@ Zero-dependency Node.js server (`server.js`, port 8787). Endpoints: OAuth start/
 - **Protocol-driven dependencies** for testability — tests use test doubles (e.g., `TestClient`, `TestOCR`, `TestScheduler`)
 - **UIKit for share extension**, SwiftUI for main app
 - **Theme system:** `KuriTheme` (UIKit colors/metrics), `KuriSwiftUITheme` (SwiftUI bridge) in `SharedUI/`
+
+## Quick Reference
+- **Platform**: iOS 17+ / macOS 14+
+- **Language**: Swift 6.0
+- **UI Framework**: SwiftUI
+- **Architecture**: MVVM with @Observable
+- **Minimum Deployment**: iOS 17.0
+- **Package Manager**: Swift Package Manager
+
+## XcodeBuildMCP Integration
+**IMPORTANT**: This project uses XcodeBuildMCP for all Xcode operations.
+- Build: `mcp__xcodebuildmcp__build_sim_name_proj`
+- Test: `mcp__xcodebuildmcp__test_sim_name_proj`
+- Clean: `mcp__xcodebuildmcp__clean`
+
+
+## Coding Standards
+
+### Swift Style
+- Use Swift 6 strict concurrency
+- Prefer `@Observable` over `ObservableObject`
+- Use `async/await` for all async operations
+- Follow Apple's Swift API Design Guidelines
+- Use `guard` for early exits
+- Prefer value types (structs) over reference types (classes)
+
+### SwiftUI Patterns
+- Extract views when they exceed 100 lines
+- Use `@State` for local view state only
+- Use `@Environment` for dependency injection
+- Prefer `NavigationStack` over deprecated `NavigationView`
+- Use `@Bindable` for bindings to @Observable objects
+
+### Navigation Pattern
+```swift
+// Use NavigationStack with type-safe routing
+enum Route: Hashable {
+    case detail(Item)
+    case settings
+}
+
+NavigationStack(path: $router.path) {
+    ContentView()
+        .navigationDestination(for: Route.self) { route in
+            // Handle routing
+        }
+}
