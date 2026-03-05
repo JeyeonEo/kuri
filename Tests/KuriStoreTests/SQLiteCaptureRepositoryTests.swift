@@ -326,3 +326,41 @@ import KuriCore
         #expect(!FileManager.default.fileExists(atPath: imagePath))
     }
 }
+
+@Test func renameTagUpdatesAllCapturesAndRecentTags() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item1 = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "A", memo: "", tags: ["swift", "ios"], imagePayloads: []))
+    let item2 = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "B", memo: "", tags: ["swift"], imagePayloads: []))
+
+    try repository.renameTag("swift", to: "swiftlang")
+
+    let updated1 = try repository.item(id: item1.id)
+    let updated2 = try repository.item(id: item2.id)
+    #expect(updated1?.tags == ["swiftlang", "ios"])
+    #expect(updated2?.tags == ["swiftlang"])
+
+    let allTags = try repository.allTags()
+    let tagNames = allTags.map(\.name)
+    #expect(tagNames.contains("swiftlang"))
+    #expect(!tagNames.contains("swift"))
+}
+
+@Test func renameTagToExistingNameMerges() throws {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    let repository = try StoreEnvironment.makeRepository(baseDirectory: root)
+
+    let item = try repository.save(CaptureDraft(sourceApp: .threads, sourceURL: nil, sharedText: "A", memo: "", tags: ["dev", "development"], imagePayloads: []))
+
+    try repository.renameTag("dev", to: "development")
+
+    let updated = try repository.item(id: item.id)
+    #expect(updated?.tags == ["development"])
+
+    let allTags = try repository.allTags()
+    #expect(allTags.count == 1)
+    #expect(allTags[0].name == "development")
+}

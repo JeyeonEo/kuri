@@ -17,6 +17,7 @@ public protocol CaptureRepository: Sendable {
     func markOCRPending(id: UUID, imageLocalPath: String) throws
     func updateOCR(id: UUID, text: String, title: String) throws
     func delete(id: UUID) throws
+    func renameTag(_ oldName: String, to newName: String) throws
 }
 
 public protocol AppStateRepository: Sendable {
@@ -332,6 +333,99 @@ public final class SQLiteCaptureRepository: @unchecked Sendable, CaptureReposito
             let query = "DELETE FROM capture_items WHERE id = ?"
             try runStatement(query) { stmt in
                 sqlite3_bind_text(stmt, 1, id.uuidString, -1, SQLITE_TRANSIENT)
+            }
+        }
+    }
+
+    public func renameTag(_ oldName: String, to newName: String) throws {
+        let normalized = newName.normalizedTag
+        guard !normalized.isEmpty else { return }
+        let oldNormalized = oldName.normalizedTag
+        guard oldNormalized != normalized else { return }
+
+        try writerQueue.sync {
+            try execute("BEGIN IMMEDIATE TRANSACTION")
+            do {
+                // Update tags_json in all capture_items containing the old tag
+                let selectQuery = "SELECT id, tags_json FROM capture_items WHERE tags_json LIKE ?"
+                let selectStmt = try prepare(selectQuery)
+                defer { sqlite3_finalize(selectStmt) }
+                let pattern = "%\(oldNormalized)%"
+                sqlite3_bind_text(selectStmt, 1, pattern, -1, SQLITE_TRANSIENT)
+
+                var updates: [(String, [String])] = []
+                while sqlite3_step(selectStmt) == SQLITE_ROW {
+                    let id = String(cString: sqlite3_column_text(selectStmt, 0))
+                    let tagsData = Data(
+                        bytes: sqlite3_column_blob(selectStmt, 1),
+                        count: Int(sqlite3_column_bytes(selectStmt, 1))
+                    )
+                    var tags = (try? JSONDecoder().decode([String].self, from: tagsData)) ?? []
+                    let hadOld = tags.contains(oldNormalized)
+                    let hasNew = tags.contains(normalized)
+                    if hadOld {
+                        if hasNew {
+                            tags.removeAll { $0 == oldNormalized }
+                        } else if let idx = tags.firstIndex(of: oldNormalized) {
+                            tags[idx] = normalized
+                        }
+                        updates.append((id, tags))
+                    }
+                }
+
+                let updateQuery = "UPDATE capture_items SET tags_json = ?, updated_at = ? WHERE id = ?"
+                for (id, tags) in updates {
+                    let stmt = try prepare(updateQuery)
+                    let tagsJSON = try JSONEncoder().encode(tags)
+                    sqlite3_bind_text(stmt, 1, String(data: tagsJSON, encoding: .utf8), -1, SQLITE_TRANSIENT)
+                    try bind(date: Date(), to: 2, in: stmt)
+                    sqlite3_bind_text(stmt, 3, id, -1, SQLITE_TRANSIENT)
+                    guard sqlite3_step(stmt) == SQLITE_DONE else {
+                        sqlite3_finalize(stmt)
+                        throw lastError(updateQuery)
+                    }
+                    sqlite3_finalize(stmt)
+                }
+
+                // Update recent_tags: merge use counts if target exists
+                let existingStmt = try prepare("SELECT use_count FROM recent_tags WHERE name = ?")
+                sqlite3_bind_text(existingStmt, 1, normalized, -1, SQLITE_TRANSIENT)
+                let targetExists = sqlite3_step(existingStmt) == SQLITE_ROW
+                let targetCount = targetExists ? Int(sqlite3_column_int(existingStmt, 0)) : 0
+                sqlite3_finalize(existingStmt)
+
+                let oldStmt = try prepare("SELECT use_count FROM recent_tags WHERE name = ?")
+                sqlite3_bind_text(oldStmt, 1, oldNormalized, -1, SQLITE_TRANSIENT)
+                let oldCount = sqlite3_step(oldStmt) == SQLITE_ROW ? Int(sqlite3_column_int(oldStmt, 0)) : 0
+                sqlite3_finalize(oldStmt)
+
+                // Delete old tag
+                let deleteStmt = try prepare("DELETE FROM recent_tags WHERE name = ?")
+                sqlite3_bind_text(deleteStmt, 1, oldNormalized, -1, SQLITE_TRANSIENT)
+                sqlite3_step(deleteStmt)
+                sqlite3_finalize(deleteStmt)
+
+                // Insert or update target tag
+                let mergedCount = targetCount + oldCount
+                let upsertQuery = """
+                INSERT INTO recent_tags (name, last_used_at, use_count) VALUES (?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET use_count = ?
+                """
+                let upsertStmt = try prepare(upsertQuery)
+                sqlite3_bind_text(upsertStmt, 1, normalized, -1, SQLITE_TRANSIENT)
+                try bind(date: Date(), to: 2, in: upsertStmt)
+                sqlite3_bind_int(upsertStmt, 3, Int32(mergedCount))
+                sqlite3_bind_int(upsertStmt, 4, Int32(mergedCount))
+                guard sqlite3_step(upsertStmt) == SQLITE_DONE else {
+                    sqlite3_finalize(upsertStmt)
+                    throw lastError(upsertQuery)
+                }
+                sqlite3_finalize(upsertStmt)
+
+                try execute("COMMIT TRANSACTION")
+            } catch {
+                try? execute("ROLLBACK TRANSACTION")
+                throw error
             }
         }
     }
